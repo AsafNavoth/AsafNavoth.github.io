@@ -11,6 +11,7 @@ def test_should_keep_token_filters_single_hiragana_and_punctuation():
     assert _should_keep_token('咲い') is True
     assert _should_keep_token('の') is False
     assert _should_keep_token('が') is False
+    assert _should_keep_token('た') is False
     assert _should_keep_token('、') is False
     assert _should_keep_token('。') is False
     assert _should_keep_token('') is False
@@ -226,6 +227,33 @@ def test_export_anki_returns_422_when_no_cards(mock_tokenize, client):
     )
     assert response.status_code == 422
     assert 'No vocabulary cards' in response.get_json()['error']
+
+
+@patch('anki_deck.build_anki_notes_json')
+def test_export_anki_notes_returns_json(mock_build, client):
+    mock_build.return_value = {
+        'deckName': 'Test - Artist',
+        'modelName': 'Lyrics Vocabulary',
+        'notes': [
+            {'fields': {'Word': '花', 'Definition': '<div>flower</div>'}},
+        ],
+    }
+    lyrics_data = {
+        'trackName': 'Test',
+        'artistName': 'Artist',
+        'plainLyrics': '花',
+    }
+    response = client.post(
+        '/api/lyrics/anki/notes',
+        json=lyrics_data,
+        headers={'Content-Type': 'application/json'},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['deckName'] == 'Test - Artist'
+    assert data['modelName'] == 'Lyrics Vocabulary'
+    assert len(data['notes']) == 1
+    assert data['notes'][0]['fields']['Word'] == '花'
 
 
 @patch('anki_deck.tokenize_lyrics')

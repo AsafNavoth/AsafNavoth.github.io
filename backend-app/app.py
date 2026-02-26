@@ -11,7 +11,7 @@ logging.basicConfig(
     datefmt='%H:%M:%S',
 )
 # Enable INFO for our app; third-party libs stay at WARNING
-for name in ('routes.lyrics', 'routes.search', 'lyrics_tokenizer', 'anki_deck'):
+for name in ('routes.lyrics', 'routes.search', 'routes.ankiconnect', 'lyrics_tokenizer', 'anki_deck'):
     logging.getLogger(name).setLevel(logging.INFO)
 app = Flask(__name__)
 CORS(app)

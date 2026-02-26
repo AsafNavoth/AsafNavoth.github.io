@@ -137,7 +137,9 @@ def tokenize_lyrics(text: str) -> list[tuple[str, dict]]:
     morphemes = tokenizer.tokenize(text, SplitMode.A)
     words = [
         m.dictionary_form() for m in morphemes
-        if m.surface().strip() and _should_keep_token(m.surface())
+        if m.surface().strip()
+        and _should_keep_token(m.surface())
+        and _should_keep_token(m.dictionary_form())
     ]
     unique_words = list(dict.fromkeys(words))
     logger.info("tokenize_lyrics: %d unique tokens jamdict=%s", len(unique_words), jam is not None)

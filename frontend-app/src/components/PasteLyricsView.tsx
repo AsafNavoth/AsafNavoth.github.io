@@ -1,6 +1,8 @@
 import { Box, TextField, Typography } from '@mui/material'
 import { useCallback, useMemo, useState } from 'react'
+import { AddToAnkiDeckPicker } from './AddToAnkiDeckPicker'
 import { AnkiExportButton } from './AnkiExportButton'
+import { useAnkiConnect } from '../hooks/useAnkiConnect'
 import { useAnkiExport } from '../hooks/useAnkiExport'
 
 const MAX_LYRICS_CHARS = 5000
@@ -25,10 +27,17 @@ export const PasteLyricsView = () => {
     [trimmedDeckName]
   )
 
-  const { prepare, download, blob, isExporting, error } = useAnkiExport({
+  const { prepare, download, blob, isExporting, error: exportError } = useAnkiExport({
     payload,
     filename,
   })
+  const {
+    addToAnki,
+    getDeckNames,
+    isAddingToAnki,
+    error: ankiConnectError,
+  } = useAnkiConnect(payload)
+  const [deckPickerOpen, setDeckPickerOpen] = useState(false)
 
   const handleExport = useCallback(() => {
     if (!trimmedText) return
@@ -100,9 +109,17 @@ export const PasteLyricsView = () => {
         hasPreparedFile={!!blob}
         isExporting={isExporting}
         disabled={!canExport}
-        error={error}
+        error={exportError ?? ankiConnectError}
         onPrepare={handleExport}
         onDownload={download}
+        onAddToAnki={() => setDeckPickerOpen(true)}
+        isAddingToAnki={isAddingToAnki}
+      />
+      <AddToAnkiDeckPicker
+        open={deckPickerOpen}
+        onClose={() => setDeckPickerOpen(false)}
+        getDeckNames={getDeckNames}
+        onSelectDeck={(deckName) => addToAnki(deckName)}
       />
     </Box>
   )

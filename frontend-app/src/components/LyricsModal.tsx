@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -7,8 +8,10 @@ import {
   CircularProgress,
 } from '@mui/material'
 import { useReactQuery } from '../hooks/useReactQuery'
+import { useAnkiConnect } from '../hooks/useAnkiConnect'
 import { useAnkiExport } from '../hooks/useAnkiExport'
 import type { LrclibLyricsDetails } from '../types/lrclib'
+import { AddToAnkiDeckPicker } from './AddToAnkiDeckPicker'
 import { AnkiExportButton } from './AnkiExportButton'
 
 type LyricsModalProps = {
@@ -45,6 +48,13 @@ export const LyricsModal = ({
     payload: data ?? null,
     filename: `${trackName}.apkg`,
   })
+  const {
+    addToAnki,
+    getDeckNames,
+    isAddingToAnki,
+    error: ankiConnectError,
+  } = useAnkiConnect(data ?? null)
+  const [deckPickerOpen, setDeckPickerOpen] = useState(false)
 
   const dialogTitle = [trackName, artistName, albumName]
     .filter(Boolean)
@@ -60,9 +70,17 @@ export const LyricsModal = ({
               hasPreparedFile={!!blob}
               isExporting={isExporting}
               disabled={!lyricsToShow}
-              error={exportError}
+              error={exportError ?? ankiConnectError}
               onPrepare={prepare}
               onDownload={download}
+              onAddToAnki={() => setDeckPickerOpen(true)}
+              isAddingToAnki={isAddingToAnki}
+            />
+            <AddToAnkiDeckPicker
+              open={deckPickerOpen}
+              onClose={() => setDeckPickerOpen(false)}
+              getDeckNames={getDeckNames}
+              onSelectDeck={(deckName) => addToAnki(deckName)}
             />
           </Box>
         )}

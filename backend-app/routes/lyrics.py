@@ -4,7 +4,7 @@ from flask import Blueprint, Response, jsonify, request
 import requests
 from requests.exceptions import HTTPError
 
-from anki_deck import build_anki_deck_from_lyrics_data
+from anki_deck import build_anki_deck_from_lyrics_data, build_anki_notes_json
 from config import LRCLIB_BASE_URL, MAX_LYRICS_CHARS
 from lyrics_tokenizer import JamdictNotAvailableError, extract_lyrics_text
 
@@ -69,3 +69,36 @@ def export_anki():
         mimetype='application/octet-stream',
         headers={'Content-Disposition': 'attachment; filename="utanki.apkg"'},
     )
+
+
+@lyrics_bp.route('/lyrics/anki/notes', methods=['POST'])
+def export_anki_notes():
+    """Export lyrics vocabulary as JSON for AnkiConnect.
+    Accepts lyrics data (plainLyrics/syncedLyrics, trackName, artistName).
+    Returns deckName, modelName, and notes with Word/Definition fields."""
+    lyrics_data = request.get_json()
+    if not lyrics_data:
+        logger.warning("export_anki_notes: no request body")
+        return jsonify({'error': 'Request body must contain lyrics data'}), 400
+
+    track_name = lyrics_data.get('trackName', 'Unknown')
+    logger.info("export_anki_notes: building notes track=%r keys=%s", track_name, list(lyrics_data.keys()))
+    lyrics_text = extract_lyrics_text(lyrics_data)
+    if len(lyrics_text) > MAX_LYRICS_CHARS:
+        logger.warning("export_anki_notes: lyrics too long chars=%d max=%d", len(lyrics_text), MAX_LYRICS_CHARS)
+        return jsonify({'error': f'Lyrics text is too long. Max {MAX_LYRICS_CHARS} characters.'}), 413
+
+    try:
+        result = build_anki_notes_json(lyrics_data)
+        logger.info("export_anki_notes: success track=%r notes=%d", track_name, len(result['notes']))
+        return jsonify(result)
+    except JamdictNotAvailableError as e:
+        logger.error("export_anki_notes: jamdict unavailable track=%r err=%s", track_name, e)
+        return jsonify({'error': str(e)}), 503
+    except ValueError as e:
+        err = str(e)
+        if 'No definitions found' in err or 'No vocabulary cards' in err:
+            logger.warning("export_anki_notes: %s track=%r", err, track_name)
+            return jsonify({'error': err}), 422
+        logger.exception("export_anki_notes: ValueError track=%r", track_name)
+        raise

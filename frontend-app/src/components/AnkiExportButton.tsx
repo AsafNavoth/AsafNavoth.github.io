@@ -1,4 +1,4 @@
-import { Box, Button, CircularProgress, Typography } from '@mui/material'
+import { Box, Button, ButtonGroup, CircularProgress, Typography } from '@mui/material'
 
 type AnkiExportButtonProps = {
   hasPreparedFile: boolean
@@ -7,6 +7,9 @@ type AnkiExportButtonProps = {
   error?: string | null
   onPrepare: () => void
   onDownload: () => void
+  /** Optional: Add to Anki via AnkiConnect (adds cards to existing deck) */
+  onAddToAnki?: () => void
+  isAddingToAnki?: boolean
 }
 
 export const AnkiExportButton = ({
@@ -16,17 +19,32 @@ export const AnkiExportButton = ({
   error,
   onPrepare,
   onDownload,
+  onAddToAnki,
+  isAddingToAnki = false,
 }: AnkiExportButtonProps) => {
+  const showAddToAnki = Boolean(onAddToAnki)
+  const isBusy = isExporting || isAddingToAnki
+
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-      <Button
-        variant="outlined"
-        onClick={hasPreparedFile ? onDownload : onPrepare}
-        disabled={disabled || isExporting}
-        startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : undefined}
-      >
-        {isExporting ? 'Preparing…' : hasPreparedFile ? 'Download' : 'Export to Anki'}
-      </Button>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+      <ButtonGroup variant="outlined" size="medium">
+        <Button
+          onClick={hasPreparedFile ? onDownload : onPrepare}
+          disabled={disabled || isBusy}
+          startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : undefined}
+        >
+          {isExporting ? 'Preparing…' : hasPreparedFile ? 'Download' : 'Export to Anki'}
+        </Button>
+        {showAddToAnki && (
+          <Button
+            onClick={onAddToAnki}
+            disabled={disabled || isBusy}
+            startIcon={isAddingToAnki ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {isAddingToAnki ? 'Adding…' : 'Add to Anki'}
+          </Button>
+        )}
+      </ButtonGroup>
       {error && (
         <Typography color="error" sx={{ fontSize: '0.875rem' }}>
           {error}
