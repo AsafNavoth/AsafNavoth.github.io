@@ -5,8 +5,10 @@ import {
   Typography,
   Box,
   CircularProgress,
+  Button,
 } from '@mui/material'
 import { useReactQuery } from '../hooks/useReactQuery'
+import { useAnkiExport } from '../hooks/useAnkiExport'
 import type { LrclibLyricsDetails } from '../types/lrclib'
 
 type LyricsModalProps = {
@@ -33,6 +35,10 @@ export const LyricsModal = ({
   })
 
   const lyricsToShow = data?.plainLyrics ?? data?.syncedLyrics ?? ''
+  const { prepare, download, blob, isExporting, error: exportError } = useAnkiExport({
+    payload: data ?? null,
+    filename: `${trackName}.apkg`,
+  })
 
   const dialogTitle = [trackName, artistName, albumName]
     .filter(Boolean)
@@ -66,6 +72,23 @@ export const LyricsModal = ({
           >
             {lyricsToShow}
           </Typography>
+        )}
+        {data && (
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={blob ? download : prepare}
+              disabled={!lyricsToShow || isExporting}
+              startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {isExporting ? 'Preparing…' : blob ? 'Download' : 'Export to Anki'}
+            </Button>
+            {exportError && (
+              <Typography color="error" sx={{ mt: 1, fontSize: '0.875rem' }}>
+                {exportError}
+              </Typography>
+            )}
+          </Box>
         )}
       </DialogContent>
     </Dialog>

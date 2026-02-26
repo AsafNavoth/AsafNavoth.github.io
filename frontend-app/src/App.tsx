@@ -1,4 +1,4 @@
-import { Container, Paper, Typography } from '@mui/material'
+import { Container, Paper, Typography, Box } from '@mui/material'
 import { SearchView } from './components/SearchView'
 
 export const App = () => (

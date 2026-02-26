@@ -2,5 +2,9 @@ flask>=3.0.0
 flask-cors>=4.0.0
 requests>=2.32.0
 sudachipy>=0.6.0
+sudachidict_core
+jamdict
+jamdict-data
+genanki>=0.13.0
 pytest>=8.0.0
 requests-mock>=1.11.0

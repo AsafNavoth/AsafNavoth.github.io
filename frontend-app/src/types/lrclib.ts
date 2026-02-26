@@ -9,6 +9,13 @@ export type LrclibSearchResult = {
   syncedLyrics?: string
 }
 
+export type JamdictLookupResult = {
+  entries: unknown[]
+  names: unknown[]
+  chars: unknown[]
+  found: boolean
+}
+
 export type LrclibLyricsDetails = {
   id: number
   trackName: string

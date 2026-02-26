@@ -43,13 +43,20 @@ export const SearchView = () => {
     enabled: !!searchQuery,
   })
 
-  const showEmptyState =
-    data && data.length === 0 && searchQuery && !isLoading
+  const showEmptyState = data && data.length === 0 && searchQuery && !isLoading
 
   const showSearchResults = data && data.length > 0
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        height: '100%',
+        width: '50%',
+      }}
+    >
       <SearchBar
         value={searchInput}
         onChange={setSearchInput}

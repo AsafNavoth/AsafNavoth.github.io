@@ -1,6 +1,27 @@
 import requests_mock
+from unittest.mock import patch
 
-from app import LRCLIB_BASE_URL
+from config import LRCLIB_BASE_URL
+from lyrics_tokenizer import JamdictNotAvailableError, remove_english_letters, _should_keep_token
+
+
+def test_should_keep_token_filters_single_hiragana_and_punctuation():
+    assert _should_keep_token('桜') is True
+    assert _should_keep_token('花') is True
+    assert _should_keep_token('咲い') is True
+    assert _should_keep_token('の') is False
+    assert _should_keep_token('が') is False
+    assert _should_keep_token('、') is False
+    assert _should_keep_token('。') is False
+    assert _should_keep_token('') is False
+
+
+def test_remove_english_letters_strips_ascii_letters():
+    assert remove_english_letters('Hello 世界') == '世界'
+    assert remove_english_letters('桜の花が咲いた') == '桜の花が咲いた'
+    assert remove_english_letters('I love 日本') == '日本'
+    assert remove_english_letters('abc') == ''
+    assert remove_english_letters('   spaces   between   ') == ''
 
 
 def test_search_returns_400_when_no_query_params(client):
@@ -82,13 +103,13 @@ def test_search_works_with_track_name_only(client):
 def test_get_lyrics_returns_lyrics_for_valid_id(client):
     mock_lyrics = {
         'id': 3396226,
-        'trackName': 'I Want to Live',
-        'artistName': 'Borislav Slavov',
-        'albumName': "Baldur's Gate 3",
+        'trackName': '桜',
+        'artistName': 'Test Artist',
+        'albumName': 'Test Album',
         'duration': 233,
         'instrumental': False,
-        'plainLyrics': 'I feel your breath upon my neck',
-        'syncedLyrics': '[00:17.12] I feel your breath upon my neck',
+        'plainLyrics': '桜の花が咲いた',
+        'syncedLyrics': '[00:17.12] 桜の花が咲いた',
     }
 
     with requests_mock.Mocker() as mock:
@@ -100,7 +121,99 @@ def test_get_lyrics_returns_lyrics_for_valid_id(client):
         response = client.get('/api/lyrics/3396226')
 
     assert response.status_code == 200
-    assert response.get_json() == mock_lyrics
+    data = response.get_json()
+    assert data['id'] == mock_lyrics['id']
+    assert data['plainLyrics'] == mock_lyrics['plainLyrics']
+
+
+@patch('anki_deck.tokenize_lyrics')
+def test_export_anki_returns_apkg_file(mock_tokenize, client):
+    mock_tokenized = [
+        ('桜', {'entries': [{'kanji': [{'text': '桜'}], 'kana': [{'text': 'さくら'}], 'senses': [{'SenseGloss': [{'text': 'cherry tree', 'lang': 'eng'}]}]}], 'names': [], 'chars': []}),
+        ('花', {'entries': [{'kanji': [{'text': '花'}], 'kana': [{'text': 'はな'}], 'senses': [{'SenseGloss': [{'text': 'flower', 'lang': 'eng'}]}]}], 'names': [], 'chars': []}),
+    ]
+    mock_tokenize.return_value = mock_tokenized
+
+    lyrics_data = {
+        'id': 3396226,
+        'trackName': '桜',
+        'artistName': 'Test Artist',
+        'plainLyrics': '桜の花が咲いた',
+    }
+
+    response = client.post(
+        '/api/lyrics/anki',
+        json=lyrics_data,
+        headers={'Content-Type': 'application/json'},
+    )
+
+    assert response.status_code == 200
+    assert response.content_type == 'application/octet-stream'
+    assert 'attachment' in response.headers.get('Content-Disposition', '')
+    assert '桜.apkg' in response.headers.get('Content-Disposition', '')
+    assert len(response.data) > 100
+
+
+def test_export_anki_returns_400_when_no_body(client):
+    response = client.post(
+        '/api/lyrics/anki',
+        json=None,
+        headers={'Content-Type': 'application/json'},
+    )
+    assert response.status_code in (400, 415)
+
+
+@patch('anki_deck.tokenize_lyrics', side_effect=JamdictNotAvailableError('Jamdict database is not available.'))
+def test_export_anki_returns_503_when_jamdict_unavailable(mock_tokenize, client):
+    lyrics_data = {
+        'trackName': 'Test',
+        'artistName': 'Artist',
+        'plainLyrics': '桜の花',
+    }
+    response = client.post(
+        '/api/lyrics/anki',
+        json=lyrics_data,
+        headers={'Content-Type': 'application/json'},
+    )
+    assert response.status_code == 503
+    assert 'Jamdict' in response.get_json()['error']
+
+
+@patch('anki_deck.tokenize_lyrics', return_value=[])
+def test_export_anki_returns_422_when_no_cards(mock_tokenize, client):
+    lyrics_data = {
+        'trackName': 'Test',
+        'artistName': 'Artist',
+        'plainLyrics': 'Hello world',
+    }
+    response = client.post(
+        '/api/lyrics/anki',
+        json=lyrics_data,
+        headers={'Content-Type': 'application/json'},
+    )
+    assert response.status_code == 422
+    assert 'No vocabulary cards' in response.get_json()['error']
+
+
+@patch('anki_deck.tokenize_lyrics')
+def test_export_anki_returns_422_when_no_definitions_found(mock_tokenize, client):
+    mock_tokenize.return_value = [
+        ('word1', {'entries': [], 'names': [], 'chars': []}),
+        ('word2', {'entries': [], 'names': [], 'chars': []}),
+    ]
+
+    lyrics_data = {
+        'trackName': 'Test',
+        'artistName': 'Artist',
+        'plainLyrics': 'word1 word2',
+    }
+    response = client.post(
+        '/api/lyrics/anki',
+        json=lyrics_data,
+        headers={'Content-Type': 'application/json'},
+    )
+    assert response.status_code == 422
+    assert 'No definitions found' in response.get_json()['error']
 
 
 def test_get_lyrics_returns_404_when_not_found(client):
