@@ -11,6 +11,7 @@ import { useApi } from './useApi'
 import type { AnkiNote } from './useAnkiNotes'
 
 const ANKICONNECT_VERSION = 6
+const EXCLUDED_DECKS = ['Default', 'デフォルト']
 
 const CARD_CSS = `.card {
  font-family: "ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro", "Noto Sans JP", "Noto Sans CJK JP", Osaka, "メイリオ", Meiryo, "ＭＳ Ｐゴシック", "MS PGothic", "MS UI Gothic", sans-serif;
@@ -84,6 +85,17 @@ export const useAnkiConnect = () => {
       setIsAdding(true)
       setError(null)
       try {
+        const deckNames = await invokeAnkiConnect<string[]>(api, {
+          action: 'deckNames',
+          version: ANKICONNECT_VERSION,
+        })
+        const validDecks = deckNames.filter((n) => !EXCLUDED_DECKS.includes(n))
+        if (!validDecks.includes(targetDeck)) {
+          throw new Error(
+            'The selected deck no longer exists. Please select a different deck from the dropdown.'
+          )
+        }
+
         const modelNames = await invokeAnkiConnect<string[]>(api, {
           action: 'modelNames',
           version: ANKICONNECT_VERSION,

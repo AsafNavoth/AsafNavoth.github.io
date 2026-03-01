@@ -9,11 +9,13 @@ import {
   FormControlLabel,
   List,
   ListItem,
+  Tooltip,
   Typography,
   Box,
 } from '@mui/material'
 import { NotesChecklistSkeleton } from '../common/LoadingSkeletons'
 import { stripHtml, truncate } from '../../utils/commonStringUtils'
+import { useAnkiConnectContext } from '../../contexts/ankiconnect/ankiconnectContext'
 import type { AnkiNote, AnkiNotesData } from '../../hooks/useAnkiNotes'
 
 type NotesChecklistModalProps = {
@@ -23,9 +25,13 @@ type NotesChecklistModalProps = {
   isLoading: boolean
   error: string | null
   onDownload: (selectedNotes: AnkiNote[]) => void
-  onAddToDeck: (selectedNotes: AnkiNote[]) => void
+  onAddToDeck: (
+    selectedNotes: AnkiNote[],
+    deckName: string
+  ) => void | Promise<void>
   isDownloading?: boolean
   isAdding?: boolean
+  addError?: string | null
 }
 
 export const NotesChecklistModal = ({
@@ -38,7 +44,9 @@ export const NotesChecklistModal = ({
   onAddToDeck,
   isDownloading = false,
   isAdding = false,
+  addError = null,
 }: NotesChecklistModalProps) => {
+  const { ankiConnectEnabled, selectedDeck } = useAnkiConnectContext()
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
   useEffect(() => {
@@ -79,8 +87,9 @@ export const NotesChecklistModal = ({
   }, [onDownload, selectedNotes])
 
   const handleAddToDeck = useCallback(() => {
-    onAddToDeck(selectedNotes)
-  }, [onAddToDeck, selectedNotes])
+    if (!selectedDeck) return
+    onAddToDeck(selectedNotes, selectedDeck)
+  }, [onAddToDeck, selectedNotes, selectedDeck])
 
   const handleClose = useCallback(() => {
     setSelected(new Set())
@@ -118,6 +127,11 @@ export const NotesChecklistModal = ({
                 {selected.size} of {notesData.notes.length} selected
               </Typography>
             </Box>
+            {addError && ankiConnectEnabled && (
+              <Typography color="error" sx={{ mb: 2 }}>
+                {addError}
+              </Typography>
+            )}
             <List
               dense
               sx={{
@@ -180,13 +194,29 @@ export const NotesChecklistModal = ({
         >
           {isDownloading ? 'Preparing…' : 'Download'}
         </Button>
-        <Button
-          variant="contained"
-          onClick={handleAddToDeck}
-          disabled={!someSelected || isBusy || isLoading}
+        <Tooltip
+          title={
+            !ankiConnectEnabled
+              ? 'Enable AnkiConnect integration to add cards to an existing deck'
+              : ''
+          }
         >
-          {isAdding ? 'Adding…' : 'Add to deck'}
-        </Button>
+          <span>
+            <Button
+              variant="contained"
+              onClick={handleAddToDeck}
+              disabled={
+                !someSelected ||
+                isBusy ||
+                isLoading ||
+                !ankiConnectEnabled ||
+                !selectedDeck
+              }
+            >
+              {isAdding ? 'Adding…' : 'Add to deck'}
+            </Button>
+          </span>
+        </Tooltip>
       </DialogActions>
     </Dialog>
   )

@@ -1,7 +1,6 @@
 import { Box, TextField, Typography } from '@mui/material'
 import { flexColumnHalf } from '../../utils/commonStyles'
 import { useCallback, useMemo, useState } from 'react'
-import { AddToAnkiDeckPicker } from '../anki/AddToAnkiDeckPicker'
 import { DeckNameDialog } from '../anki/DeckNameDialog'
 import { AnkiExportButton } from '../anki/AnkiExportButton'
 import { NotesChecklistModal } from '../anki/NotesChecklistModal'
@@ -37,18 +36,13 @@ export const PasteLyricsView = () => {
     useAnkiExport()
   const {
     addToAnki,
-    getDeckNames,
     isAddingToAnki,
     error: ankiConnectError,
     clearError: clearAnkiConnectError,
   } = useAnkiConnect()
 
   const [notesModalOpen, setNotesModalOpen] = useState(false)
-  const [deckPickerOpen, setDeckPickerOpen] = useState(false)
   const [deckNameDialogOpen, setDeckNameDialogOpen] = useState(false)
-  const [pendingNotes, setPendingNotes] = useState<
-    { fields: Record<string, string> }[] | null
-  >(null)
   const [pendingDownloadNotes, setPendingDownloadNotes] = useState<
     { fields: Record<string, string> }[] | null
   >(null)
@@ -86,23 +80,15 @@ export const PasteLyricsView = () => {
   )
 
   const handleAddToDeck = useCallback(
-    (selectedNotes: { fields: Record<string, string> }[]) => {
+    async (
+      selectedNotes: { fields: Record<string, string> }[],
+      deckName: string
+    ) => {
+      if (!notesData) return
+      await addToAnki(deckName, selectedNotes, notesData.modelName)
       setNotesModalOpen(false)
-      setPendingNotes(selectedNotes)
-      setDeckPickerOpen(true)
     },
-    []
-  )
-
-  const handleSelectDeck = useCallback(
-    async (deckName: string) => {
-      if (!pendingNotes || !notesData) return
-
-      await addToAnki(deckName, pendingNotes, notesData.modelName)
-      setPendingNotes(null)
-      setDeckPickerOpen(false)
-    },
-    [addToAnki, pendingNotes, notesData]
+    [addToAnki, notesData]
   )
 
   const charCount = text.length
@@ -160,6 +146,7 @@ export const PasteLyricsView = () => {
         onClose={() => {
           abortFetch()
           setNotesModalOpen(false)
+          clearAnkiConnectError()
         }}
         notesData={notesData}
         isLoading={isNotesLoading}
@@ -168,6 +155,7 @@ export const PasteLyricsView = () => {
         onAddToDeck={handleAddToDeck}
         isDownloading={isExporting}
         isAdding={isAddingToAnki}
+        addError={ankiConnectError}
       />
       <DeckNameDialog
         open={deckNameDialogOpen}
@@ -179,23 +167,6 @@ export const PasteLyricsView = () => {
         onConfirm={handleDeckNameConfirm}
         isDownloading={isExporting}
         error={deckNameDialogOpen ? exportError : null}
-      />
-      <AddToAnkiDeckPicker
-        open={deckPickerOpen}
-        onClose={() => {
-          setDeckPickerOpen(false)
-          setPendingNotes(null)
-          clearAnkiConnectError()
-        }}
-        onBack={() => {
-          setDeckPickerOpen(false)
-          setNotesModalOpen(true)
-          clearAnkiConnectError()
-        }}
-        getDeckNames={getDeckNames}
-        onSelectDeck={handleSelectDeck}
-        isAdding={isAddingToAnki}
-        addError={ankiConnectError}
       />
     </Box>
   )

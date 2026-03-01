@@ -11,7 +11,6 @@ import { useAnkiConnect } from '../../hooks/useAnkiConnect'
 import { useAnkiExport } from '../../hooks/useAnkiExport'
 import { useAnkiNotes } from '../../hooks/useAnkiNotes'
 import type { LrclibLyricsDetails } from '../../types/lrclib'
-import { AddToAnkiDeckPicker } from '../anki/AddToAnkiDeckPicker'
 import { DeckNameDialog } from '../anki/DeckNameDialog'
 import { LyricsSkeleton } from '../common/LoadingSkeletons'
 import { AnkiExportButton } from '../anki/AnkiExportButton'
@@ -58,18 +57,13 @@ export const LyricsModal = ({
   } = useAnkiExport()
   const {
     addToAnki,
-    getDeckNames,
     isAddingToAnki,
     error: ankiConnectError,
     clearError: clearAnkiConnectError,
   } = useAnkiConnect()
 
   const [notesModalOpen, setNotesModalOpen] = useState(false)
-  const [deckPickerOpen, setDeckPickerOpen] = useState(false)
   const [deckNameDialogOpen, setDeckNameDialogOpen] = useState(false)
-  const [pendingNotes, setPendingNotes] = useState<
-    { fields: Record<string, string> }[] | null
-  >(null)
   const [pendingDownloadNotes, setPendingDownloadNotes] = useState<
     { fields: Record<string, string> }[] | null
   >(null)
@@ -106,23 +100,15 @@ export const LyricsModal = ({
   )
 
   const handleAddToDeck = useCallback(
-    (selectedNotes: { fields: Record<string, string> }[]) => {
+    async (
+      selectedNotes: { fields: Record<string, string> }[],
+      deckName: string
+    ) => {
+      if (!notesData) return
+      await addToAnki(deckName, selectedNotes, notesData.modelName)
       setNotesModalOpen(false)
-      setPendingNotes(selectedNotes)
-      setDeckPickerOpen(true)
     },
-    []
-  )
-
-  const handleSelectDeck = useCallback(
-    async (deckName: string) => {
-      if (!pendingNotes || !notesData) return
-
-      await addToAnki(deckName, pendingNotes, notesData.modelName)
-      setPendingNotes(null)
-      setDeckPickerOpen(false)
-    },
-    [addToAnki, pendingNotes, notesData]
+    [addToAnki, notesData]
   )
 
   const dialogTitle = [trackName, artistName, albumName]
@@ -193,6 +179,7 @@ export const LyricsModal = ({
           onClose={() => {
             abortFetch()
             setNotesModalOpen(false)
+            clearAnkiConnectError()
           }}
           notesData={notesData}
           isLoading={isNotesLoading}
@@ -201,6 +188,7 @@ export const LyricsModal = ({
           onAddToDeck={handleAddToDeck}
           isDownloading={isExporting}
           isAdding={isAddingToAnki}
+          addError={ankiConnectError}
         />
         <DeckNameDialog
           open={deckNameDialogOpen}
@@ -212,23 +200,6 @@ export const LyricsModal = ({
           onConfirm={handleDeckNameConfirm}
           isDownloading={isExporting}
           error={deckNameDialogOpen ? exportError : null}
-        />
-        <AddToAnkiDeckPicker
-          open={deckPickerOpen}
-          onClose={() => {
-            setDeckPickerOpen(false)
-            setPendingNotes(null)
-            clearAnkiConnectError()
-          }}
-          onBack={() => {
-            setDeckPickerOpen(false)
-            setNotesModalOpen(true)
-            clearAnkiConnectError()
-          }}
-          getDeckNames={getDeckNames}
-          onSelectDeck={handleSelectDeck}
-          isAdding={isAddingToAnki}
-          addError={ankiConnectError}
         />
       </DialogContent>
     </Dialog>

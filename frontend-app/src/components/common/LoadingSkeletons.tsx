@@ -57,6 +57,16 @@ export const NotesChecklistSkeleton = () => (
   </>
 )
 
+export const DeckSelectSkeleton = () => (
+  <Skeleton
+    variant="rounded"
+    width={200}
+    height={40}
+    animation="wave"
+    sx={{ borderRadius: 1 }}
+  />
+)
+
 export const DeckListSkeleton = () => (
   <List dense disablePadding sx={{ mb: 1 }}>
     {Array.from({ length: SKELETON_DECK_COUNT }).map((_, i) => (

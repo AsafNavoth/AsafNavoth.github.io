@@ -23,5 +23,6 @@ export const flexColumnHalf = {
   width: '50%',
   // Allow flex item to shrink below content width; prevents overflow in narrow viewports
   minWidth: 0,
+  minHeight: 0,
   overflow: 'hidden',
 }

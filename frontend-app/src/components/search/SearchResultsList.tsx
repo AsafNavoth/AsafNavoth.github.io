@@ -11,7 +11,7 @@ export const SearchResultsList = ({
   results,
   onTrackClick,
 }: SearchResultsListProps) => (
-  <List sx={{ maxHeight: '100%', overflow: 'auto' }}>
+  <List sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
     {results.map((track) => (
       <ListItem key={track.id} divider disablePadding>
         <ListItemButton
