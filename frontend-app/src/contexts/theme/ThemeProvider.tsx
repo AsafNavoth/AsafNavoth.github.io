@@ -1,0 +1,67 @@
+import { useCallback, useMemo, useState } from 'react'
+import {
+  createTheme,
+  CssBaseline,
+  ThemeProvider as MuiThemeProvider,
+} from '@mui/material'
+import { getStorageItem, setStorageItem } from '../../utils/storage'
+import { ThemeContext } from './themeContext'
+import type { ThemeMode } from './themeContext'
+
+const STORAGE_KEY = 'utanki-theme-mode'
+const LIGHT_THEME_STRING = 'light'
+const DARK_THEME_STRING = 'dark'
+
+const parseThemeMode = (inputString: string): ThemeMode | null => {
+  switch (inputString) {
+    case LIGHT_THEME_STRING:
+    case DARK_THEME_STRING:
+      return inputString
+    default:
+      return null
+  }
+}
+
+const getStoredMode = (): ThemeMode =>
+  getStorageItem(STORAGE_KEY, parseThemeMode, LIGHT_THEME_STRING)
+
+type ThemeProviderProps = {
+  children: React.ReactNode
+}
+
+export const ThemeProvider = ({ children }: ThemeProviderProps) => {
+  const [mode, setMode] = useState<ThemeMode>(getStoredMode)
+
+  const toggleColorMode = useCallback(() => {
+    setMode((prev) => {
+      const next =
+        prev === LIGHT_THEME_STRING ? DARK_THEME_STRING : LIGHT_THEME_STRING
+      setStorageItem(STORAGE_KEY, next)
+      return next
+    })
+  }, [])
+
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode,
+        },
+      }),
+    [mode]
+  )
+
+  const contextValue = useMemo(
+    () => ({ mode, toggleColorMode }),
+    [mode, toggleColorMode]
+  )
+
+  return (
+    <ThemeContext.Provider value={contextValue}>
+      <MuiThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </MuiThemeProvider>
+    </ThemeContext.Provider>
+  )
+}

@@ -1,4 +1,5 @@
 import { Box, CircularProgress } from '@mui/material'
+import { flexCenter } from '../../utils/commonStyles'
 
 type LoadingReplacerProps = {
   isLoading: boolean
@@ -6,7 +7,7 @@ type LoadingReplacerProps = {
 
 export const LoadingReplacer = ({ isLoading }: LoadingReplacerProps) =>
   isLoading ? (
-    <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+    <Box sx={{ ...flexCenter, p: 2 }}>
       <CircularProgress size={24} />
     </Box>
   ) : null

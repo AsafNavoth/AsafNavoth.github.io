@@ -1,6 +1,12 @@
 import { useCallback, useState } from 'react'
-import type { AxiosInstance } from 'axios'
+import { type AxiosInstance } from 'axios'
 import { useSnackbar } from '../contexts/snackbar/snackbarContext'
+import {
+  ANKI_CONNECTION_ERROR_MESSAGE,
+  isAnkiConnectionError,
+  pluralSuffix,
+} from '../utils/commonStringUtils'
+import { getApiErrorMessage } from '../utils/apiUtils'
 import { useApi } from './useApi'
 
 const ANKICONNECT_VERSION = 6
@@ -114,34 +120,29 @@ export const useAnkiConnect = (payload: object | null) => {
           version: ANKICONNECT_VERSION,
           params: { notes: notesToAdd },
         })
-        const notesToAddFiltered = notesToAdd.filter((_, i) => canAdd[i])
-        const skippedCount = notesToAdd.length - notesToAddFiltered.length
 
-        if (notesToAddFiltered.length > 0) {
+        const filteredNotesToAdd = notesToAdd.filter((_, i) => canAdd[i])
+        const skippedNotesCount = notesToAdd.length - filteredNotesToAdd.length
+
+        if (filteredNotesToAdd.length > 0) {
           await invokeAnkiConnect<number[]>(api, {
             action: 'addNotes',
             version: ANKICONNECT_VERSION,
-            params: { notes: notesToAddFiltered },
+            params: { notes: filteredNotesToAdd },
           })
         }
 
-        const addedCount = notesToAddFiltered.length
+        const addedCount = filteredNotesToAdd.length
         const message =
           addedCount > 0
-            ? `Added ${addedCount} card${addedCount === 1 ? '' : 's'} to ${targetDeck}${skippedCount > 0 ? ` (${skippedCount} already in deck)` : ''}`
-            : `All ${notesToAdd.length} card${notesToAdd.length === 1 ? '' : 's'} already in ${targetDeck}`
+            ? `Added ${addedCount} card${pluralSuffix(addedCount)} to ${targetDeck}${skippedNotesCount > 0 ? ` (${skippedNotesCount} already in deck)` : ''}`
+            : `All ${notesToAdd.length} card${pluralSuffix(notesToAdd.length)} already in ${targetDeck}`
+
         enqueueSnackbar(message)
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Failed to add cards to Anki'
-        if (
-          message.includes('fetch') ||
-          message.includes('Failed to fetch') ||
-          message.includes('NetworkError')
-        ) {
-          setError(
-            'Cannot connect to Anki. Make sure Anki is running and AnkiConnect add-on is installed.'
-          )
+        const message = await getApiErrorMessage(err, 'Failed to add cards to Anki')
+        if (isAnkiConnectionError(message)) {
+          setError(ANKI_CONNECTION_ERROR_MESSAGE)
         } else {
           setError(message)
         }

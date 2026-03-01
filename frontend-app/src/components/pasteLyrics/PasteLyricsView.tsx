@@ -1,11 +1,13 @@
 import { Box, TextField, Typography } from '@mui/material'
+import { flexColumnHalf } from '../../utils/commonStyles'
 import { useCallback, useMemo, useState } from 'react'
-import { AddToAnkiDeckPicker } from './AddToAnkiDeckPicker'
-import { AnkiExportButton } from './AnkiExportButton'
-import { useAnkiConnect } from '../hooks/useAnkiConnect'
-import { useAnkiExport } from '../hooks/useAnkiExport'
+import { AddToAnkiDeckPicker } from '../anki/AddToAnkiDeckPicker'
+import { AnkiExportButton } from '../anki/AnkiExportButton'
+import { useAnkiConnect } from '../../hooks/useAnkiConnect'
+import { useAnkiExport } from '../../hooks/useAnkiExport'
 
 const MAX_LYRICS_CHARS = 5000
+const DEFAULT_DECK_NAME = 'Pasted lyrics'
 
 export const PasteLyricsView = () => {
   const [text, setText] = useState('')
@@ -17,26 +19,34 @@ export const PasteLyricsView = () => {
     if (!trimmedText) return null
     return {
       plainLyrics: trimmedText,
-      trackName: trimmedDeckName || 'Pasted lyrics',
+      trackName: trimmedDeckName || DEFAULT_DECK_NAME,
       artistName: '',
     }
   }, [trimmedText, trimmedDeckName])
 
-  const filename = useMemo(
-    () => `${trimmedDeckName || 'Pasted lyrics'}.apkg`,
+  const deckFileName = useMemo(
+    () => `${trimmedDeckName || DEFAULT_DECK_NAME}.apkg`,
     [trimmedDeckName]
   )
 
-  const { prepare, download, blob, isExporting, error: exportError } = useAnkiExport({
+  const {
+    prepare,
+    download,
+    blob,
+    isExporting,
+    error: exportError,
+  } = useAnkiExport({
     payload,
-    filename,
+    filename: deckFileName,
   })
+
   const {
     addToAnki,
     getDeckNames,
     isAddingToAnki,
     error: ankiConnectError,
   } = useAnkiConnect(payload)
+
   const [deckPickerOpen, setDeckPickerOpen] = useState(false)
 
   const handleExport = useCallback(() => {
@@ -49,17 +59,7 @@ export const PasteLyricsView = () => {
   const canExport = trimmedText.length > 0 && !isTooLong
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        height: '100%',
-        width: '50%',
-        minWidth: 0,
-        overflow: 'hidden',
-      }}
-    >
+    <Box sx={flexColumnHalf}>
       <Typography variant="h6">Paste lyrics</Typography>
       <Typography variant="body2" color="text.secondary">
         Paste song lyrics or any Japanese text to create an Anki deck from the

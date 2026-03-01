@@ -10,9 +10,32 @@ import {
   CircularProgress,
   Typography,
   Box,
+  styled,
 } from '@mui/material'
+import { flexCenter, onHoverStyle } from '../../utils/commonStyles'
+import {
+  ANKI_CONNECTION_ERROR_MESSAGE,
+  isAnkiConnectionError,
+} from '../../utils/commonStringUtils'
 
 const EXCLUDED_DECKS = ['Default', 'デフォルト']
+
+const DeckListItemButton = styled(ListItemButton)(({ theme }) => ({
+  ...onHoverStyle(theme),
+  borderRadius: theme.shape.borderRadius,
+  marginBottom: theme.spacing(0.5),
+  minHeight: 0,
+  paddingTop: theme.spacing(1.5),
+  paddingBottom: theme.spacing(1.5),
+  transition: 'background-color 0.15s ease',
+  '&.Mui-selected': {
+    backgroundColor: theme.palette.primary.main,
+    color: theme.palette.primary.contrastText,
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark,
+    },
+  },
+}))
 
 type AddToAnkiDeckPickerProps = {
   open: boolean
@@ -37,22 +60,20 @@ export const AddToAnkiDeckPicker = ({
     setError(null)
     setSelectedDeck(null)
     getDeckNames()
-      .then((names) =>
-        setDecks(names.filter((d) => !EXCLUDED_DECKS.includes(d)))
+      .then((deckNames) =>
+        setDecks(
+          // Default deck appears in the decks query even if it doesn't show up
+          // in the Anki UI, so we filter it out here.
+          deckNames.filter((deckName) => !EXCLUDED_DECKS.includes(deckName))
+        )
       )
       .catch((err) => {
-        const message =
+        const errorMessage =
           err instanceof Error ? err.message : 'Failed to fetch decks'
-        if (
-          message.includes('fetch') ||
-          message.includes('Failed to fetch') ||
-          message.includes('NetworkError')
-        ) {
-          setError(
-            'Cannot connect to Anki. Make sure Anki is running and AnkiConnect add-on is installed.'
-          )
+        if (isAnkiConnectionError(errorMessage)) {
+          setError(ANKI_CONNECTION_ERROR_MESSAGE)
         } else {
-          setError(message)
+          setError(errorMessage)
         }
       })
   }, [open, getDeckNames])
@@ -79,7 +100,7 @@ export const AddToAnkiDeckPicker = ({
           </Typography>
         )}
         {!decks && !error && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <Box sx={{ ...flexCenter, py: 4 }}>
             <CircularProgress />
           </Box>
         )}
@@ -90,31 +111,14 @@ export const AddToAnkiDeckPicker = ({
         )}
         {decks && decks.length > 0 && (
           <List dense disablePadding sx={{ mb: 1 }}>
-            {decks.map((deck) => (
-              <ListItemButton
-                key={deck}
-                selected={selectedDeck === deck}
-                onClick={() => setSelectedDeck(deck)}
-                sx={{
-                  borderRadius: 1,
-                  mb: 0.5,
-                  minHeight: 0,
-                  py: 1.5,
-                  transition: 'background-color 0.15s ease',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.main',
-                    color: 'primary.contrastText',
-                    '&:hover': {
-                      backgroundColor: 'primary.dark',
-                    },
-                  },
-                }}
+            {decks.map((singleDeck) => (
+              <DeckListItemButton
+                key={singleDeck}
+                selected={selectedDeck === singleDeck}
+                onClick={() => setSelectedDeck(singleDeck)}
               >
-                {deck}
-              </ListItemButton>
+                {singleDeck}
+              </DeckListItemButton>
             ))}
           </List>
         )}

@@ -1,6 +1,6 @@
 import { List, ListItem, ListItemButton, ListItemText } from '@mui/material'
-import type { LrclibSearchResult } from '../types/lrclib'
-import { onHoverStyle } from '../utils/stylesUtils'
+import type { LrclibSearchResult } from '../../types/lrclib'
+import { onHoverStyle } from '../../utils/commonStyles'
 
 type SearchResultsListProps = {
   results: LrclibSearchResult[]
@@ -16,7 +16,7 @@ export const SearchResultsList = ({
       <ListItem key={track.id} divider disablePadding>
         <ListItemButton
           onClick={() => onTrackClick(track)}
-          sx={{ ...onHoverStyle }}
+          sx={(theme) => ({ ...onHoverStyle(theme) })}
         >
           <ListItemText
             primary={track.trackName}

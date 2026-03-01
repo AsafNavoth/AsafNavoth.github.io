@@ -17,6 +17,30 @@ DECK_ID = 2059400111
 
 MAX_DEFINITIONS = 5
 
+# Model/field names (must match frontend)
+ANKI_MODEL_NAME = 'Lyrics Vocabulary'
+FIELD_WORD = 'Word'
+FIELD_DEFINITION = 'Definition'
+
+# Error messages (used in routes for response handling)
+ERROR_NO_VOCABULARY_CARDS = 'No vocabulary cards could be generated from the lyrics'
+ERROR_NO_DEFINITIONS = 'No definitions found for any word in the lyrics'
+NO_DEFINITION_FOUND = 'No definition found'
+
+
+class NoVocabularyCardsError(Exception):
+    """Raised when lyrics yield no tokenizable vocabulary."""
+
+    def __init__(self, message: str = ERROR_NO_VOCABULARY_CARDS):
+        super().__init__(message)
+
+
+class NoDefinitionsError(Exception):
+    """Raised when tokenized words have no jamdict definitions."""
+
+    def __init__(self, message: str = ERROR_NO_DEFINITIONS):
+        super().__init__(message)
+
 
 def _format_jamdict_result(result: dict) -> str:
     """Format jamdict result as HTML for Anki card back."""
@@ -74,7 +98,7 @@ def _format_jamdict_result(result: dict) -> str:
             parts.append(f'<div class="char"><b>{html.escape(literal)}</b> (kanji): {"; ".join(html.escape(m) for m in meanings)}</div>')
 
     if not parts:
-        return html.escape('No definition found')
+        return html.escape(NO_DEFINITION_FOUND)
 
     return '<br>'.join(parts)
 
@@ -83,10 +107,10 @@ def _get_anki_model() -> genanki.Model:
     """Return the note model for lyrics vocabulary cards."""
     return genanki.Model(
         MODEL_ID,
-        'Lyrics Vocabulary',
+        ANKI_MODEL_NAME,
         fields=[
-            {'name': 'Word'},
-            {'name': 'Definition'},
+            {'name': FIELD_WORD},
+            {'name': FIELD_DEFINITION},
         ],
         templates=[
             {
@@ -99,34 +123,40 @@ def _get_anki_model() -> genanki.Model:
     )
 
 
-def build_anki_deck(
-    tokenized_lyrics: list[tuple[str, dict]],
-    deck_name: str = 'Lyrics Vocabulary',
-) -> bytes:
-    """Build an Anki deck from tokenized lyrics. Returns .apkg file bytes."""
-    logger.info("build_anki_deck: deck_name=%r cards=%d", deck_name, len(tokenized_lyrics))
-    if not tokenized_lyrics:
-        raise ValueError('No vocabulary cards could be generated from the lyrics')
-    model = _get_anki_model()
-    deck = genanki.Deck(DECK_ID, deck_name)
-
-    no_definition = html.escape('No definition found')
-    added_cards = 0
-
-    for word, result in tokenized_lyrics:
+def _build_notes_from_tokenized(
+    tokenized: list[tuple[str, dict]],
+) -> list[tuple[str, str]]:
+    """Return list of (word, definition_html) for words that have definitions."""
+    no_definition = html.escape(NO_DEFINITION_FOUND)
+    notes = []
+    for word, result in tokenized:
         definition_html = _format_jamdict_result(result)
         if definition_html == no_definition:
             continue
-        note = genanki.Note(
-            model=model,
-            fields=[html.escape(word), definition_html],
-        )
-        deck.add_note(note)
-        added_cards += 1
+        notes.append((html.escape(word), definition_html))
+    return notes
 
-    if added_cards == 0:
+
+def build_anki_deck(
+    tokenized_lyrics: list[tuple[str, dict]],
+    deck_name: str | None = None,
+) -> bytes:
+    """Build an Anki deck from tokenized lyrics. Returns .apkg file bytes."""
+    deck_name = deck_name or ANKI_MODEL_NAME
+    logger.info("build_anki_deck: deck_name=%r cards=%d", deck_name, len(tokenized_lyrics))
+    if not tokenized_lyrics:
+        raise NoVocabularyCardsError()
+
+    notes = _build_notes_from_tokenized(tokenized_lyrics)
+    if not notes:
         logger.warning("build_anki_deck: no definitions for any of %d words", len(tokenized_lyrics))
-        raise ValueError('No definitions found for any word in the lyrics')
+        raise NoDefinitionsError()
+
+    model = _get_anki_model()
+    deck = genanki.Deck(DECK_ID, deck_name)
+    for word, definition_html in notes:
+        note = genanki.Note(model=model, fields=[word, definition_html])
+        deck.add_note(note)
 
     package = genanki.Package(deck)
     with tempfile.NamedTemporaryFile(suffix='.apkg', delete=False) as tmp:
@@ -141,11 +171,11 @@ def build_anki_deck(
         os.unlink(tmp_path)
 
 
-def build_anki_deck_from_lyrics_data(lyrics_data: dict, deck_name: str | None = None) -> bytes:
-    """Build an Anki deck from raw lyrics API data."""
-    logger.debug("build_anki_deck_from_lyrics_data: starting")
+def _prepare_lyrics_data(
+    lyrics_data: dict, deck_name: str | None = None
+) -> tuple[list[tuple[str, dict]], str]:
+    """Extract lyrics text, tokenize, and compute deck name. Returns (tokenized, deck_name)."""
     lyrics_text = extract_lyrics_text(lyrics_data)
-    logger.debug("build_anki_deck_from_lyrics_data: extracted lyrics len=%d", len(lyrics_text))
     tokenized = tokenize_lyrics(lyrics_text)
 
     track_name = lyrics_data.get('trackName', 'Unknown')
@@ -153,46 +183,36 @@ def build_anki_deck_from_lyrics_data(lyrics_data: dict, deck_name: str | None = 
     name = f'{track_name} - {artist_name}' if artist_name else track_name
     deck_name = deck_name or name
 
+    return tokenized, deck_name
+
+
+def build_anki_deck_from_lyrics_data(lyrics_data: dict, deck_name: str | None = None) -> bytes:
+    """Build an Anki deck from raw lyrics API data."""
+    logger.debug("build_anki_deck_from_lyrics_data: starting")
+    tokenized, deck_name = _prepare_lyrics_data(lyrics_data, deck_name)
+    logger.debug("build_anki_deck_from_lyrics_data: tokenized %d words", len(tokenized))
     return build_anki_deck(tokenized, deck_name=deck_name)
-
-
-# AnkiConnect model name and field names (must match createModel in frontend)
-ANKICONNECT_MODEL_NAME = 'Lyrics Vocabulary'
 
 
 def build_anki_notes_json(lyrics_data: dict, deck_name: str | None = None) -> dict:
     """Build note data for AnkiConnect. Returns dict with deckName, modelName, notes."""
     logger.debug("build_anki_notes_json: starting")
-    lyrics_text = extract_lyrics_text(lyrics_data)
-    logger.debug("build_anki_notes_json: extracted lyrics len=%d", len(lyrics_text))
-    tokenized = tokenize_lyrics(lyrics_text)
+    tokenized, deck_name = _prepare_lyrics_data(lyrics_data, deck_name)
+    logger.debug("build_anki_notes_json: tokenized %d words", len(tokenized))
 
-    track_name = lyrics_data.get('trackName', 'Unknown')
-    artist_name = lyrics_data.get('artistName', '')
-    name = f'{track_name} - {artist_name}' if artist_name else track_name
-    deck_name = deck_name or name
-
-    no_definition = html.escape('No definition found')
-    notes = []
-    for word, result in tokenized:
-        definition_html = _format_jamdict_result(result)
-        if definition_html == no_definition:
-            continue
-        notes.append({
-            'fields': {
-                'Word': html.escape(word),
-                'Definition': definition_html,
-            },
-        })
-
-    if not notes:
+    note_pairs = _build_notes_from_tokenized(tokenized)
+    if not note_pairs:
         if not tokenized:
-            raise ValueError('No vocabulary cards could be generated from the lyrics')
-        raise ValueError('No definitions found for any word in the lyrics')
+            raise NoVocabularyCardsError()
+        raise NoDefinitionsError()
 
+    notes = [
+        {'fields': {FIELD_WORD: word, FIELD_DEFINITION: definition_html}}
+        for word, definition_html in note_pairs
+    ]
     logger.info("build_anki_notes_json: deck_name=%r notes=%d", deck_name, len(notes))
     return {
         'deckName': deck_name,
-        'modelName': ANKICONNECT_MODEL_NAME,
+        'modelName': ANKI_MODEL_NAME,
         'notes': notes,
     }

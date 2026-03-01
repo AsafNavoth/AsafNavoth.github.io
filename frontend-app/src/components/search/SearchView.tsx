@@ -1,12 +1,13 @@
 import { Box, Typography } from '@mui/material'
+import { flexColumnHalf } from '../../utils/commonStyles'
 import { useState } from 'react'
-import { useReactQuery } from '../hooks/useReactQuery'
-import type { LrclibSearchResult } from '../types/lrclib'
+import { useReactQuery } from '../../hooks/useReactQuery'
+import type { LrclibSearchResult } from '../../types/lrclib'
 import { SearchBar } from './SearchBar'
 import { SearchResultsList } from './SearchResultsList'
 import { SearchErrorMessage } from './SearchErrorMessage'
-import { LoadingReplacer } from './LoadingReplacer'
-import { LyricsModal } from './LyricsModal'
+import { LoadingReplacer } from '../common/LoadingReplacer'
+import { LyricsModal } from '../lyrics/LyricsModal'
 
 export const SearchView = () => {
   const [searchInput, setSearchInput] = useState('')
@@ -48,17 +49,7 @@ export const SearchView = () => {
   const showSearchResults = data && data.length > 0
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        height: '100%',
-        width: '50%',
-        minWidth: 0,
-        overflow: 'hidden',
-      }}
-    >
+    <Box sx={flexColumnHalf}>
       <SearchBar
         value={searchInput}
         onChange={setSearchInput}

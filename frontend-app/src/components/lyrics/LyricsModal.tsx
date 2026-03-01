@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { flexCenter } from '../../utils/commonStyles'
 import {
   Dialog,
   DialogTitle,
@@ -7,12 +8,12 @@ import {
   Box,
   CircularProgress,
 } from '@mui/material'
-import { useReactQuery } from '../hooks/useReactQuery'
-import { useAnkiConnect } from '../hooks/useAnkiConnect'
-import { useAnkiExport } from '../hooks/useAnkiExport'
-import type { LrclibLyricsDetails } from '../types/lrclib'
-import { AddToAnkiDeckPicker } from './AddToAnkiDeckPicker'
-import { AnkiExportButton } from './AnkiExportButton'
+import { useReactQuery } from '../../hooks/useReactQuery'
+import { useAnkiConnect } from '../../hooks/useAnkiConnect'
+import { useAnkiExport } from '../../hooks/useAnkiExport'
+import type { LrclibLyricsDetails } from '../../types/lrclib'
+import { AddToAnkiDeckPicker } from '../anki/AddToAnkiDeckPicker'
+import { AnkiExportButton } from '../anki/AnkiExportButton'
 
 type LyricsModalProps = {
   open: boolean
@@ -85,7 +86,7 @@ export const LyricsModal = ({
           </Box>
         )}
         {isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <Box sx={{ ...flexCenter, p: 4 }}>
             <CircularProgress size={32} />
           </Box>
         )}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useApi } from './useApi'
+import { getApiErrorMessage } from '../utils/apiUtils'
 
 type UseAnkiExportParams = {
   payload: object | null
@@ -19,6 +20,7 @@ export const useAnkiExport = ({ payload, filename }: UseAnkiExportParams) => {
 
   const prepare = useCallback(async () => {
     if (!payload) return
+
     setIsExporting(true)
     setError(null)
     setBlob(null)
@@ -28,20 +30,7 @@ export const useAnkiExport = ({ payload, filename }: UseAnkiExportParams) => {
       })
       setBlob(new Blob([response.data]))
     } catch (err: unknown) {
-      let message = err instanceof Error ? err.message : 'Export failed'
-      if (err && typeof err === 'object' && 'response' in err) {
-        const errorResponse = (err as { response?: { data?: unknown } }).response
-        const responseData = errorResponse?.data
-        if (responseData instanceof Blob) {
-          try {
-            const errorText = await responseData.text()
-            const parsedError = JSON.parse(errorText) as { error?: string }
-            if (parsedError.error) message = parsedError.error
-          } catch {
-            /* ignore */
-          }
-        }
-      }
+      const message = await getApiErrorMessage(err, 'Export failed')
       setError(message)
     } finally {
       setIsExporting(false)
