@@ -30,9 +30,7 @@ def _get_jamdict():
     global _jamdict
     if _jamdict is None:
         try:
-            logger.debug("_get_jamdict: loading db_path=%s", JAMDICT_DB_PATH)
             _jamdict = Jamdict(db_file=JAMDICT_DB_PATH)
-            logger.info("_get_jamdict: loaded successfully")
         except Exception as e:
             logger.error("_get_jamdict: failed to load err=%s", e)
             _jamdict = False  # Mark as failed so we don't retry
@@ -74,7 +72,6 @@ def _lookup_result_to_dict(result) -> dict:
 def extract_lyrics_text(lyrics_data: dict) -> str:
     """Extract plain text from lyrics data (plainLyrics or syncedLyrics)."""
     if not isinstance(lyrics_data, dict):
-        logger.warning("extract_lyrics_text: lyrics_data is not dict")
         return ''
     plain = (
         lyrics_data.get('plainLyrics')
@@ -84,18 +81,21 @@ def extract_lyrics_text(lyrics_data: dict) -> str:
     )
 
     if isinstance(plain, str) and plain.strip():
-        logger.debug("extract_lyrics_text: using plainLyrics len=%d", len(plain))
         return plain
-    synced = lyrics_data.get('syncedLyrics') or lyrics_data.get('synced') or ''
+    synced = lyrics_data.get('syncedLyrics') or lyrics_data.get('synced')
+
+    if isinstance(synced, list):
+        # Array format: [{text: "...", startTime: 123}, ...]
+        lines = [
+            item.get('text', '') if isinstance(item, dict) else str(item)
+            for item in synced
+        ]
+        return '\n'.join(line.strip() for line in lines if line.strip())
 
     if not isinstance(synced, str):
-        logger.warning("extract_lyrics_text: syncedLyrics not a string")
         return ''
 
-    result = re.sub(r'\[\d{1,2}:\d{2}\.\d{2}\]\s*', '', synced)
-    logger.debug("extract_lyrics_text: using syncedLyrics len=%d -> %d", len(synced), len(result))
-    
-    return result
+    return re.sub(r'\[\d{1,2}:\d{2}\.\d{2}\]\s*', '', synced)
 
 
 def remove_english_letters(text: str) -> str:
@@ -103,6 +103,31 @@ def remove_english_letters(text: str) -> str:
     text = re.sub(r'[a-zA-Z]', '', text)
     
     return re.sub(r'\s+', ' ', text).strip()
+
+
+def get_sentence_for_word(
+    word: str, lyrics_text: str, surface_forms: list[str] | None = None
+) -> str:
+    """Return the first line/phrase from lyrics_text that contains the word.
+    Uses surface_forms for matching when provided (handles Japanese verb conjugation)."""
+    if not lyrics_text:
+        return ''
+    # Prefer newline-separated lines; fall back to space-separated phrases (cleaned text)
+    raw_lines = lyrics_text.splitlines()
+    lines = [line.strip() for line in raw_lines if line.strip()]
+    if not lines:
+        lines = [p.strip() for p in lyrics_text.split() if p.strip()]
+    if not lines:
+        lines = [lyrics_text.strip()] if lyrics_text.strip() else []
+
+    candidates = [word] if word else []
+    if surface_forms:
+        candidates = list(dict.fromkeys(surface_forms + candidates))
+    for line in lines:
+        for c in candidates:
+            if c and c in line:
+                return line
+    return ''
 
 
 def _should_keep_token(token: str) -> bool:
@@ -133,11 +158,8 @@ def _should_keep_token(token: str) -> bool:
     return True
 
 
-@log_call
-def tokenize_lyrics(text: str) -> list[tuple[str, dict]]:
-    """Tokenize lyrics with SudachiPy and return unique (word, jamdict_result) tuples.
-    English letters are removed before tokenization.
-    Single hiragana, single katakana, and punctuation are filtered out."""
+def _tokenize_lyrics_impl(text: str) -> list[tuple[str, dict, list[str]]]:
+    """Internal implementation of tokenize_lyrics."""
     if not text or not text.strip():
         return []
 
@@ -149,13 +171,14 @@ def tokenize_lyrics(text: str) -> list[tuple[str, dict]]:
     tokenizer = _get_tokenizer()
     jam = _get_jamdict()
     morphemes = tokenizer.tokenize(text, SplitMode.A)
-    words = [
-        m.dictionary_form() for m in morphemes
-        if m.surface().strip()
-        and _should_keep_token(m.surface())
-        and _should_keep_token(m.dictionary_form())
-    ]
-    unique_words = list(dict.fromkeys(words))
+    # Build dict_form -> [surface_forms] for sentence matching (handles conjugation)
+    dict_to_surfaces: dict[str, list[str]] = {}
+    for m in morphemes:
+        surf = m.surface().strip()
+        dform = m.dictionary_form()
+        if surf and _should_keep_token(surf) and _should_keep_token(dform):
+            dict_to_surfaces.setdefault(dform, []).append(surf)
+    unique_words = list(dict_to_surfaces.keys())
 
     if jam is None and unique_words:
         raise JamdictNotAvailableError(
@@ -166,8 +189,11 @@ def tokenize_lyrics(text: str) -> list[tuple[str, dict]]:
     if jam is None:
         return []
 
-    tokenized = [(word, _lookup_word(jam, word)) for word in unique_words]
-    found_count = sum(1 for _, r in tokenized if r.get('found'))
+    tokenized = [
+        (word, _lookup_word(jam, word), dict_to_surfaces[word])
+        for word in unique_words
+    ]
+    found_count = sum(1 for _, r, _ in tokenized if r.get('found'))
 
     # If all lookups returned empty, jamdict may be corrupted. Retry with a fresh instance.
     if found_count == 0 and len(tokenized) > 0:
@@ -176,6 +202,16 @@ def tokenize_lyrics(text: str) -> list[tuple[str, dict]]:
         jam = _get_jamdict()
 
         if jam is not None:
-            tokenized = [(word, _lookup_word(jam, word)) for word in unique_words]
-            found_count = sum(1 for _, r in tokenized if r.get('found'))
+            tokenized = [
+                (word, _lookup_word(jam, word), dict_to_surfaces[word])
+                for word in unique_words
+            ]
+            found_count = sum(1 for _, r, _ in tokenized if r.get('found'))
     return tokenized
+
+
+@log_call
+def tokenize_lyrics(text: str) -> list[tuple[str, dict, list[str]]]:
+    """Tokenize lyrics and return unique (word, jamdict_result, surface_forms) tuples.
+    surface_forms are used for sentence extraction (handles Japanese verb conjugation)."""
+    return _tokenize_lyrics_impl(text)

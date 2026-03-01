@@ -8,32 +8,35 @@ import {
 } from '../utils/commonStringUtils'
 import { getApiErrorMessage } from '../utils/apiUtils'
 import { useApi } from './useApi'
+import type { AnkiNote } from './useAnkiNotes'
 
 const ANKICONNECT_VERSION = 6
 
+const CARD_CSS = `.card {
+ font-family: "ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro", "Noto Sans JP", "Noto Sans CJK JP", Osaka, "メイリオ", Meiryo, "ＭＳ Ｐゴシック", "MS PGothic", "MS UI Gothic", sans-serif;
+ font-size: 44px;
+ text-align: center;
+}
+.entry, .char { margin-bottom: 0.5em; }`
+
+const FRONT_TEMPLATE =
+  '<div lang="ja">\n{{Word}}\n<div style=\'font-size: 20px;\'>{{Sentence}}</div>\n</div>'
+
+const BACK_TEMPLATE =
+  "<div lang=\"ja\">\n{{Word}}\n<div style='font-size: 25px;'>{{Sentence}}</div>\n\n\n<div style='font-size: 25px; padding-bottom:20px'>{{Word Meaning}}</div>\n\n</div>"
+
 const LYRICS_VOCABULARY_MODEL = {
-  modelName: 'Lyrics Vocabulary',
-  inOrderFields: ['Word', 'Definition'],
+  inOrderFields: ['Word', 'Sentence', 'Word Meaning'],
   cardTemplates: [
-    {
-      Name: 'Card 1',
-      Front: '{{Word}}',
-      Back: '{{FrontSide}}<hr id="answer">{{Definition}}',
-    },
+    { Name: 'Card 1', Front: FRONT_TEMPLATE, Back: BACK_TEMPLATE },
   ],
-  css: '.entry, .char { margin-bottom: 0.5em; }',
+  css: CARD_CSS,
 }
 
 type AnkiConnectRequest = {
   action: string
   version: number
   params?: Record<string, unknown>
-}
-
-type AnkiNotesPayload = {
-  deckName: string
-  modelName: string
-  notes: Array<{ fields: Record<string, string> }>
 }
 
 const invokeAnkiConnect = async <T>(
@@ -48,6 +51,7 @@ const invokeAnkiConnect = async <T>(
     if (data.error) {
       throw new Error(data.error)
     }
+
     return data.result as T
   } catch (err: unknown) {
     if (
@@ -68,39 +72,64 @@ const invokeAnkiConnect = async <T>(
   }
 }
 
-export const useAnkiConnect = (payload: object | null) => {
+export const useAnkiConnect = () => {
   const api = useApi()
   const { enqueueSnackbar } = useSnackbar()
   const [isAdding, setIsAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const addToAnki = useCallback(
-    async (deckName?: string) => {
-      if (!payload) return
+    async (targetDeck: string, notes: AnkiNote[], modelName: string) => {
+      if (notes.length === 0) return
       setIsAdding(true)
       setError(null)
       try {
-        const { data } = await api.post<AnkiNotesPayload>(
-          '/api/lyrics/anki/notes',
-          payload
-        )
-        const targetDeck = deckName ?? data.deckName
-
         const modelNames = await invokeAnkiConnect<string[]>(api, {
           action: 'modelNames',
           version: ANKICONNECT_VERSION,
         })
-        if (!modelNames.includes(data.modelName)) {
+        const modelExists = modelNames.includes(modelName)
+        if (!modelExists) {
           await invokeAnkiConnect(api, {
             action: 'createModel',
             version: ANKICONNECT_VERSION,
             params: {
-              modelName: data.modelName,
+              modelName,
               inOrderFields: LYRICS_VOCABULARY_MODEL.inOrderFields,
               cardTemplates: LYRICS_VOCABULARY_MODEL.cardTemplates,
               css: LYRICS_VOCABULARY_MODEL.css,
             },
           })
+        }
+
+        if (modelExists) {
+          await invokeAnkiConnect(api, {
+            action: 'updateModelTemplates',
+            version: ANKICONNECT_VERSION,
+            params: {
+              model: {
+                name: modelName,
+                templates: {
+                  'Card 1': { Front: FRONT_TEMPLATE, Back: BACK_TEMPLATE },
+                },
+              },
+            },
+          })
+          await invokeAnkiConnect(api, {
+            action: 'updateModelStyling',
+            version: ANKICONNECT_VERSION,
+            params: { model: { name: modelName, css: CARD_CSS } },
+          })
+        }
+
+        const getFieldsForNote = (note: AnkiNote): Record<string, string> => {
+          const f = note.fields ?? {}
+
+          return {
+            Word: String(f.Word ?? f.word ?? ''),
+            Sentence: String(f.Sentence ?? f.sentence ?? ''),
+            'Word Meaning': String(f['Word Meaning'] ?? f.WordMeaning ?? ''),
+          }
         }
 
         await invokeAnkiConnect(api, {
@@ -109,10 +138,10 @@ export const useAnkiConnect = (payload: object | null) => {
           params: { deck: targetDeck },
         })
 
-        const notesToAdd = data.notes.map((note) => ({
+        const notesToAdd = notes.map((note) => ({
           deckName: targetDeck,
-          modelName: data.modelName,
-          fields: note.fields,
+          modelName,
+          fields: getFieldsForNote(note),
         }))
 
         const canAdd = await invokeAnkiConnect<boolean[]>(api, {
@@ -140,17 +169,22 @@ export const useAnkiConnect = (payload: object | null) => {
 
         enqueueSnackbar(message)
       } catch (err) {
-        const message = await getApiErrorMessage(err, 'Failed to add cards to Anki')
+        const message = await getApiErrorMessage(
+          err,
+          'Failed to add cards to Anki'
+        )
         if (isAnkiConnectionError(message)) {
           setError(ANKI_CONNECTION_ERROR_MESSAGE)
         } else {
           setError(message)
         }
+
+        throw err
       } finally {
         setIsAdding(false)
       }
     },
-    [api, payload, enqueueSnackbar]
+    [api, enqueueSnackbar]
   )
 
   const getDeckNames = useCallback(async (): Promise<string[]> => {
@@ -160,5 +194,13 @@ export const useAnkiConnect = (payload: object | null) => {
     })
   }, [api])
 
-  return { addToAnki, getDeckNames, isAddingToAnki: isAdding, error }
+  const clearError = useCallback(() => setError(null), [])
+
+  return {
+    addToAnki,
+    getDeckNames,
+    isAddingToAnki: isAdding,
+    error,
+    clearError,
+  }
 }

@@ -8,3 +8,12 @@ export const isAnkiConnectionError = (message: string): boolean =>
 
 export const pluralSuffix = (count: number, suffix = 's'): string =>
   count === 1 ? '' : suffix
+
+export const stripHtml = (html: string): string =>
+  html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+export const truncate = (s: string, maxLen: number): string =>
+  s.length <= maxLen ? s : `${s.slice(0, maxLen)}…`

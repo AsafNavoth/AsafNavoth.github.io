@@ -29,6 +29,10 @@ export default [
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      'padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: '*', next: 'return' },
+      ],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

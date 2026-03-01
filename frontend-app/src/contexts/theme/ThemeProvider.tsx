@@ -37,6 +37,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       const next =
         prev === LIGHT_THEME_STRING ? DARK_THEME_STRING : LIGHT_THEME_STRING
       setStorageItem(STORAGE_KEY, next)
+
       return next
     })
   }, [])

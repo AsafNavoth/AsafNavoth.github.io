@@ -5,7 +5,7 @@ from requests.exceptions import HTTPError
 from anki_deck import (
     NoDefinitionsError,
     NoVocabularyCardsError,
-    build_anki_deck_from_lyrics_data,
+    build_anki_deck_from_notes,
     build_anki_notes_json,
 )
 from config import LRCLIB_BASE_URL, MAX_LYRICS_CHARS
@@ -35,7 +35,6 @@ def _handle_anki_errors(exception):
 
 
 @lyrics_bp.route('/lyrics/<int:lyrics_id>')
-@log_route
 def get_lyrics(lyrics_id):
     lrclib_response = requests.get(
         f'{LRCLIB_BASE_URL}/api/get/{lyrics_id}',
@@ -51,22 +50,25 @@ def get_lyrics(lyrics_id):
     return jsonify(data)
 
 
-@lyrics_bp.route('/lyrics/anki', methods=['POST'])
+@lyrics_bp.route('/lyrics/anki/deck', methods=['POST'])
 @log_route
-def export_anki():
-    """Export lyrics vocabulary as an Anki deck (.apkg file).
-    Accepts lyrics data (plainLyrics/syncedLyrics, trackName, artistName).
-    Tokenizes on the backend when building the deck."""
-    lyrics_data = request.get_json()
-    if invalid := _validate_lyrics_request(lyrics_data):
-        return invalid
+def export_anki_deck():
+    """Build an Anki deck (.apkg) from a list of notes.
+    Accepts { deckName, modelName, notes: [{ fields: { Word, Sentence, Word Meaning } }] }."""
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+        return jsonify({'error': 'Request body must contain deckName, modelName, and notes'}), 400
+    deck_name = data.get('deckName') or data.get('deck')
+    notes = data.get('notes')
+    if not deck_name:
+        return jsonify({'error': 'deckName is required'}), 400
+    if not notes or not isinstance(notes, list):
+        return jsonify({'error': 'notes must be a non-empty array'}), 400
 
     try:
-        apkg_bytes = build_anki_deck_from_lyrics_data(lyrics_data)
-    except (JamdictNotAvailableError, NoVocabularyCardsError, NoDefinitionsError) as e:
-        if error_response := _handle_anki_errors(e):
-            return error_response
-        raise
+        apkg_bytes = build_anki_deck_from_notes(notes, deck_name)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 422
 
     return Response(
         apkg_bytes,
@@ -80,7 +82,7 @@ def export_anki():
 def export_anki_notes():
     """Export lyrics vocabulary as JSON for AnkiConnect.
     Accepts lyrics data (plainLyrics/syncedLyrics, trackName, artistName).
-    Returns deckName, modelName, and notes with Word/Definition fields."""
+    Returns deckName, modelName, and notes with Word, Sentence, Word Meaning fields."""
     lyrics_data = request.get_json()
     if invalid := _validate_lyrics_request(lyrics_data):
         return invalid

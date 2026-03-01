@@ -13,6 +13,7 @@ export const getApiErrorMessage = async (
 
   if (typeof data === 'object' && data !== null && 'error' in data) {
     const errorVal = (data as { error: unknown }).error
+
     return typeof errorVal === 'string' ? errorVal : defaultMessage
   }
 
@@ -20,6 +21,7 @@ export const getApiErrorMessage = async (
     try {
       const errorText = await data.text()
       const parsed = JSON.parse(errorText) as { error?: string }
+
       return typeof parsed.error === 'string' ? parsed.error : defaultMessage
     } catch {
       return defaultMessage

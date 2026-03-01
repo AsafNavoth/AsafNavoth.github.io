@@ -7,9 +7,11 @@ export const getStorageItem = <T>(
     const stored = localStorage.getItem(key)
     if (stored === null) return fallback
     const parsed = parse(stored)
+
     return parsed !== null ? parsed : fallback
   } catch (e) {
     if (import.meta.env.DEV) console.warn('localStorage getItem failed:', e)
+
     return fallback
   }
 }

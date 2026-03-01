@@ -1,6 +1,10 @@
 import pytest
 
-from anki_deck import _format_jamdict_result, build_anki_deck
+from anki_deck import (
+    NoDefinitionsError,
+    _format_jamdict_result,
+    build_anki_deck,
+)
 
 
 def test_format_jamdict_result_returns_definition_for_valid_entry():
@@ -52,8 +56,8 @@ def test_format_jamdict_result_returns_no_definition_found_for_empty():
 def test_build_anki_deck_has_at_least_one_definition():
     """Deck includes only cards that have definitions."""
     tokenized = [
-        ('word1', {'entries': [], 'names': [], 'chars': []}),
-        ('word2', {
+        ('word1', '', {'entries': [], 'names': [], 'chars': []}),
+        ('word2', '音がする', {
             'entries': [{
                 'kanji': [{'text': '音'}],
                 'kana': [{'text': 'おと'}],
@@ -72,8 +76,8 @@ def test_build_anki_deck_has_at_least_one_definition():
 def test_build_anki_deck_raises_when_no_definitions_found():
     """Deck build raises when every card has no definition."""
     tokenized = [
-        ('word1', {'entries': [], 'names': [], 'chars': []}),
-        ('word2', {'entries': [], 'names': [], 'chars': []}),
+        ('word1', '', {'entries': [], 'names': [], 'chars': []}),
+        ('word2', '', {'entries': [], 'names': [], 'chars': []}),
     ]
-    with pytest.raises(ValueError, match='No definitions found for any word'):
+    with pytest.raises(NoDefinitionsError, match='No definitions found for any word'):
         build_anki_deck(tokenized)

@@ -1,0 +1,193 @@
+import { useCallback, useEffect, useState, useMemo } from 'react'
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  List,
+  ListItem,
+  Typography,
+  Box,
+} from '@mui/material'
+import { NotesChecklistSkeleton } from '../common/LoadingSkeletons'
+import { stripHtml, truncate } from '../../utils/commonStringUtils'
+import type { AnkiNote, AnkiNotesData } from '../../hooks/useAnkiNotes'
+
+type NotesChecklistModalProps = {
+  open: boolean
+  onClose: () => void
+  notesData: AnkiNotesData | null
+  isLoading: boolean
+  error: string | null
+  onDownload: (selectedNotes: AnkiNote[]) => void
+  onAddToDeck: (selectedNotes: AnkiNote[]) => void
+  isDownloading?: boolean
+  isAdding?: boolean
+}
+
+export const NotesChecklistModal = ({
+  open,
+  onClose,
+  notesData,
+  isLoading,
+  error,
+  onDownload,
+  onAddToDeck,
+  isDownloading = false,
+  isAdding = false,
+}: NotesChecklistModalProps) => {
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+
+  useEffect(() => {
+    if (notesData) {
+      setSelected(new Set(notesData.notes.map((_, i) => i)))
+    }
+  }, [notesData])
+
+  const selectedNotes = useMemo(
+    () => notesData?.notes.filter((_, i) => selected.has(i)) ?? [],
+    [notesData, selected]
+  )
+
+  const allSelected = notesData
+    ? selected.size === notesData.notes.length
+    : false
+  const someSelected = selected.size > 0
+
+  const handleToggle = useCallback((index: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+
+      return next
+    })
+  }, [])
+
+  const handleSelectAll = useCallback(() => {
+    if (!notesData) return
+    setSelected(
+      allSelected ? new Set() : new Set(notesData.notes.map((_, i) => i))
+    )
+  }, [notesData, allSelected])
+
+  const handleDownload = useCallback(() => {
+    onDownload(selectedNotes)
+  }, [onDownload, selectedNotes])
+
+  const handleAddToDeck = useCallback(() => {
+    onAddToDeck(selectedNotes)
+  }, [onAddToDeck, selectedNotes])
+
+  const handleClose = useCallback(() => {
+    setSelected(new Set())
+    onClose()
+  }, [onClose])
+
+  const isBusy = isDownloading || isAdding
+
+  const dialogTitle = isLoading ? 'Loading cards...' : 'Choose cards to export'
+
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>{dialogTitle}</DialogTitle>
+      <DialogContent>
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
+        {isLoading && <NotesChecklistSkeleton />}
+        {notesData && !isLoading && (
+          <>
+            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={allSelected}
+                    indeterminate={someSelected && !allSelected}
+                    onChange={handleSelectAll}
+                  />
+                }
+                label={allSelected ? 'Deselect all' : 'Select all'}
+              />
+              <Typography variant="body2" color="text.secondary">
+                {selected.size} of {notesData.notes.length} selected
+              </Typography>
+            </Box>
+            <List
+              dense
+              sx={{
+                maxHeight: 300,
+                overflow: 'auto',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              {notesData.notes.map((note, i) => {
+                const word = note.fields?.Word ?? ''
+                const def =
+                  note.fields?.['Word Meaning'] ?? note.fields?.Definition ?? ''
+                const defPreview = truncate(stripHtml(def), 60)
+
+                return (
+                  <ListItem key={i} disablePadding sx={{ py: 0.5 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={selected.has(i)}
+                          onChange={() => handleToggle(i)}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography component="span" fontWeight="medium">
+                            {word}
+                          </Typography>
+                          {defPreview && (
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ ml: 1 }}
+                            >
+                              — {defPreview}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                      sx={{ width: '100%', m: 0 }}
+                    />
+                  </ListItem>
+                )
+              })}
+            </List>
+          </>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={handleClose} disabled={isBusy}>
+          Cancel
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={handleDownload}
+          disabled={!someSelected || isBusy || isLoading}
+        >
+          {isDownloading ? 'Preparing…' : 'Download'}
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleAddToDeck}
+          disabled={!someSelected || isBusy || isLoading}
+        >
+          {isAdding ? 'Adding…' : 'Add to deck'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+}

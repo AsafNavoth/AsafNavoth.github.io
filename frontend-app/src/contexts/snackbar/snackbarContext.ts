@@ -11,5 +11,6 @@ export const useSnackbar = () => {
   if (!ctx) {
     throw new Error('useSnackbar must be used within SnackbarProvider')
   }
+
   return ctx
 }

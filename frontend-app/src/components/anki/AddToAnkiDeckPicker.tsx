@@ -9,10 +9,10 @@ import {
   Button,
   CircularProgress,
   Typography,
-  Box,
   styled,
 } from '@mui/material'
-import { flexCenter, onHoverStyle } from '../../utils/commonStyles'
+import { DeckListSkeleton } from '../common/LoadingSkeletons'
+import { onHoverStyle } from '../../utils/commonStyles'
 import {
   ANKI_CONNECTION_ERROR_MESSAGE,
   isAnkiConnectionError,
@@ -40,15 +40,21 @@ const DeckListItemButton = styled(ListItemButton)(({ theme }) => ({
 type AddToAnkiDeckPickerProps = {
   open: boolean
   onClose: () => void
+  onBack?: () => void
   getDeckNames: () => Promise<string[]>
-  onSelectDeck: (deckName: string) => void
+  onSelectDeck: (deckName: string) => Promise<void>
+  isAdding?: boolean
+  addError?: string | null
 }
 
 export const AddToAnkiDeckPicker = ({
   open,
   onClose,
+  onBack,
   getDeckNames,
   onSelectDeck,
+  isAdding = false,
+  addError = null,
 }: AddToAnkiDeckPickerProps) => {
   const [decks, setDecks] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -78,10 +84,14 @@ export const AddToAnkiDeckPicker = ({
       })
   }, [open, getDeckNames])
 
-  const handleConfirm = () => {
-    if (selectedDeck) {
-      onSelectDeck(selectedDeck)
+  const handleConfirm = async () => {
+    if (!selectedDeck) return
+
+    try {
+      await onSelectDeck(selectedDeck)
       onClose()
+    } catch {
+      // Stay open on error; addError is shown by parent
     }
   }
 
@@ -94,16 +104,12 @@ export const AddToAnkiDeckPicker = ({
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <DialogTitle>Choose deck</DialogTitle>
       <DialogContent>
-        {error && (
+        {(addError ?? error) && (
           <Typography color="error" sx={{ mb: 2 }}>
-            {error}
+            {addError ?? error}
           </Typography>
         )}
-        {!decks && !error && (
-          <Box sx={{ ...flexCenter, py: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
+        {!decks && !error && !addError && <DeckListSkeleton />}
         {decks && decks.length === 0 && (
           <Typography color="text.secondary">
             No decks found. Create a deck in Anki first.
@@ -123,18 +129,28 @@ export const AddToAnkiDeckPicker = ({
           </List>
         )}
       </DialogContent>
-      {decks && decks.length > 0 && (
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirm}
-            disabled={!selectedDeck}
-          >
-            Add to deck
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        {onBack ? (
+          <Button onClick={onBack} disabled={isAdding}>
+            Back
           </Button>
-        </DialogActions>
-      )}
+        ) : null}
+        <Button onClick={handleClose} disabled={isAdding}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleConfirm}
+          disabled={!selectedDeck || isAdding || !decks}
+          startIcon={
+            isAdding ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : undefined
+          }
+        >
+          {isAdding ? 'Adding…' : 'Add to deck'}
+        </Button>
+      </DialogActions>
     </Dialog>
   )
 }

@@ -14,5 +14,6 @@ export const useThemeMode = () => {
   if (!ctx) {
     throw new Error('useThemeMode must be used within ThemeProvider')
   }
+
   return ctx
 }

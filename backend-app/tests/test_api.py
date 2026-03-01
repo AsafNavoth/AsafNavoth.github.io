@@ -1,8 +1,13 @@
 import requests_mock
 from unittest.mock import patch
 
-from config import LRCLIB_BASE_URL, MAX_LYRICS_CHARS
-from lyrics_tokenizer import JamdictNotAvailableError, remove_english_letters, _should_keep_token
+from config import LRCLIB_BASE_URL
+from lyrics_tokenizer import (
+    JamdictNotAvailableError,
+    get_sentence_for_word,
+    remove_english_letters,
+    _should_keep_token,
+)
 
 
 def test_should_keep_token_filters_single_hiragana_and_punctuation():
@@ -127,115 +132,57 @@ def test_get_lyrics_returns_lyrics_for_valid_id(client):
     assert data['plainLyrics'] == mock_lyrics['plainLyrics']
 
 
-@patch('anki_deck.tokenize_lyrics')
-def test_export_anki_returns_apkg_file(mock_tokenize, client):
-    mock_tokenized = [
-        ('桜', {'entries': [{'kanji': [{'text': '桜'}], 'kana': [{'text': 'さくら'}], 'senses': [{'SenseGloss': [{'text': 'cherry tree', 'lang': 'eng'}]}]}], 'names': [], 'chars': []}),
-        ('花', {'entries': [{'kanji': [{'text': '花'}], 'kana': [{'text': 'はな'}], 'senses': [{'SenseGloss': [{'text': 'flower', 'lang': 'eng'}]}]}], 'names': [], 'chars': []}),
-    ]
-    mock_tokenize.return_value = mock_tokenized
-
-    lyrics_data = {
-        'id': 3396226,
-        'trackName': '桜',
-        'artistName': 'Test Artist',
-        'plainLyrics': '桜の花が咲いた',
+def test_export_anki_deck_returns_apkg_from_notes(client):
+    """POST /api/lyrics/anki/deck builds deck from notes payload."""
+    payload = {
+        'deckName': 'Test Deck',
+        'modelName': 'Lyrics Vocabulary',
+        'notes': [
+            {'fields': {'Word': '花', 'Sentence': '花が咲く', 'Word Meaning': '<div>flower</div>'}},
+            {'fields': {'Word': '桜', 'Sentence': '桜の花', 'Word Meaning': '<div>cherry tree</div>'}},
+        ],
     }
-
     response = client.post(
-        '/api/lyrics/anki',
-        json=lyrics_data,
+        '/api/lyrics/anki/deck',
+        json=payload,
         headers={'Content-Type': 'application/json'},
     )
-
     assert response.status_code == 200
     assert response.content_type == 'application/octet-stream'
     assert 'attachment' in response.headers.get('Content-Disposition', '')
-    header = response.headers.get('Content-Disposition', '')
-    assert 'filename="utanki.apkg"' in header
     assert len(response.data) > 100
 
 
-def test_export_anki_returns_400_when_no_body(client):
+def test_export_anki_deck_returns_400_when_no_notes(client):
+    payload = {'deckName': 'Test', 'modelName': 'Lyrics Vocabulary', 'notes': []}
     response = client.post(
-        '/api/lyrics/anki',
-        json=None,
+        '/api/lyrics/anki/deck',
+        json=payload,
         headers={'Content-Type': 'application/json'},
     )
-    assert response.status_code in (400, 415)
+    assert response.status_code == 400
 
 
-def test_export_anki_returns_413_when_text_too_long(client):
-    lyrics_data = {
-        'trackName': 'Test',
-        'artistName': 'Artist',
-        'plainLyrics': 'あ' * (MAX_LYRICS_CHARS + 1),
+def test_export_anki_deck_returns_400_when_no_deck_name(client):
+    payload = {
+        'modelName': 'Lyrics Vocabulary',
+        'notes': [{'fields': {'Word': '花', 'Sentence': '', 'Word Meaning': 'flower'}}],
     }
     response = client.post(
-        '/api/lyrics/anki',
-        json=lyrics_data,
+        '/api/lyrics/anki/deck',
+        json=payload,
         headers={'Content-Type': 'application/json'},
     )
-    assert response.status_code == 413
-    assert f'Max {MAX_LYRICS_CHARS} characters' in response.get_json()['error']
+    assert response.status_code == 400
 
 
-@patch('anki_deck.tokenize_lyrics', side_effect=JamdictNotAvailableError('Jamdict database is not available.'))
-def test_export_anki_returns_503_when_jamdict_unavailable(mock_tokenize, client):
-    lyrics_data = {
-        'trackName': 'Test',
-        'artistName': 'Artist',
-        'plainLyrics': '桜の花',
-    }
-    response = client.post(
-        '/api/lyrics/anki',
-        json=lyrics_data,
-        headers={'Content-Type': 'application/json'},
-    )
-    assert response.status_code == 503
-    assert 'Jamdict' in response.get_json()['error']
-
-
-@patch('anki_deck.tokenize_lyrics', return_value=[('花', {'entries': [{'kanji': [{'text': '花'}], 'kana': [{'text': 'はな'}], 'senses': [{'SenseGloss': [{'text': 'flower', 'lang': 'eng'}]}]}], 'names': [], 'chars': []})])
-def test_export_anki_uses_static_filename(mock_tokenize, client):
-    lyrics_data = {
-        'trackName': 'bad"name\r\nx:/track',
-        'artistName': 'Artist',
-        'plainLyrics': '花',
-    }
-    response = client.post(
-        '/api/lyrics/anki',
-        json=lyrics_data,
-        headers={'Content-Type': 'application/json'},
-    )
-    assert response.status_code == 200
-    header = response.headers.get('Content-Disposition', '')
-    assert header == 'attachment; filename="utanki.apkg"'
-
-
-@patch('anki_deck.tokenize_lyrics', return_value=[])
-def test_export_anki_returns_422_when_no_cards(mock_tokenize, client):
-    lyrics_data = {
-        'trackName': 'Test',
-        'artistName': 'Artist',
-        'plainLyrics': 'Hello world',
-    }
-    response = client.post(
-        '/api/lyrics/anki',
-        json=lyrics_data,
-        headers={'Content-Type': 'application/json'},
-    )
-    assert response.status_code == 422
-    assert 'No vocabulary cards' in response.get_json()['error']
-
-
-@patch('anki_deck.build_anki_notes_json')
+@patch('routes.lyrics.build_anki_notes_json')
 def test_export_anki_notes_returns_json(mock_build, client):
     mock_build.return_value = {
         'deckName': 'Test - Artist',
         'modelName': 'Lyrics Vocabulary',
         'notes': [
-            {'fields': {'Word': '花', 'Definition': '<div>flower</div>'}},
+            {'fields': {'Word': '花', 'Sentence': '花が咲く', 'Word Meaning': '<div>flower</div>'}},
         ],
     }
     lyrics_data = {
@@ -253,28 +200,62 @@ def test_export_anki_notes_returns_json(mock_build, client):
     assert data['deckName'] == 'Test - Artist'
     assert data['modelName'] == 'Lyrics Vocabulary'
     assert len(data['notes']) == 1
-    assert data['notes'][0]['fields']['Word'] == '花'
+    fields = data['notes'][0]['fields']
+    assert fields['Word'] == '花'
+    assert fields['Sentence'] == '花が咲く'
+    assert fields['Word Meaning'] == '<div>flower</div>'
+
+
+TEST_LYRICS = '''おかわりするわ 飲み終わるまでにきてね
+
+私の何かがおかしいの
+意味ないことも楽しめるの
+みんなが知らない海泳いで
+さよなら明日も年頃よ
+
+耳のそば 連絡ないまま 光らないな
+いつまでも おりこうさんだね バカバカしいな'''
+
+
+def test_get_sentence_for_word_finds_lines_with_surface_forms():
+    """Sentence extraction finds lines using surface forms (handles conjugation)."""
+    # 飲む has surface 飲み in "飲み終わるまでにきてね"
+    assert get_sentence_for_word('飲む', TEST_LYRICS, ['飲み']) == 'おかわりするわ 飲み終わるまでにきてね'
+    # おかしい has surface おかしい in "私の何かがおかしいの"
+    assert get_sentence_for_word('おかしい', TEST_LYRICS, ['おかしい']) == '私の何かがおかしいの'
+    # 泳ぐ has surface 泳いで in "みんなが知らない海泳いで"
+    assert get_sentence_for_word('泳ぐ', TEST_LYRICS, ['泳いで']) == 'みんなが知らない海泳いで'
+    # 光る has surface 光らない in "光らないな"
+    assert get_sentence_for_word('光る', TEST_LYRICS, ['光らない']) == '耳のそば 連絡ないまま 光らないな'
 
 
 @patch('anki_deck.tokenize_lyrics')
-def test_export_anki_returns_422_when_no_definitions_found(mock_tokenize, client):
+def test_build_anki_notes_json_includes_sentences_when_tokenizer_returns_surface_forms(
+    mock_tokenize, client
+):
+    """Full API flow: notes include Sentence when tokenizer provides surface forms."""
+    def _mock_entry(word, gloss):
+        return {'kanji': [{'text': word}], 'senses': [{'SenseGloss': [{'text': gloss, 'lang': 'eng'}]}]}
     mock_tokenize.return_value = [
-        ('word1', {'entries': [], 'names': [], 'chars': []}),
-        ('word2', {'entries': [], 'names': [], 'chars': []}),
+        ('飲む', {'entries': [_mock_entry('飲む', 'to drink')], 'names': [], 'chars': []}, ['飲み']),
+        ('おかしい', {'entries': [_mock_entry('おかしい', 'strange')], 'names': [], 'chars': []}, ['おかしい']),
     ]
-
-    lyrics_data = {
-        'trackName': 'Test',
-        'artistName': 'Artist',
-        'plainLyrics': 'word1 word2',
-    }
     response = client.post(
-        '/api/lyrics/anki',
-        json=lyrics_data,
+        '/api/lyrics/anki/notes',
+        json={
+            'trackName': 'Test',
+            'artistName': 'Artist',
+            'plainLyrics': TEST_LYRICS,
+        },
         headers={'Content-Type': 'application/json'},
     )
-    assert response.status_code == 422
-    assert 'No definitions found' in response.get_json()['error']
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data['notes']) >= 1
+    for note in data['notes']:
+        fields = note['fields']
+        assert 'Sentence' in fields
+        assert fields['Sentence'], f"Word {fields.get('Word')} should have a sentence"
 
 
 def test_get_lyrics_returns_404_when_not_found(client):

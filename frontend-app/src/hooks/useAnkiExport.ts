@@ -1,51 +1,52 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useApi } from './useApi'
 import { getApiErrorMessage } from '../utils/apiUtils'
+import type { AnkiNote } from './useAnkiNotes'
 
-type UseAnkiExportParams = {
-  payload: object | null
-  filename: string
+type DeckPayload = {
+  deckName: string
+  modelName: string
+  notes: AnkiNote[]
 }
 
-export const useAnkiExport = ({ payload, filename }: UseAnkiExportParams) => {
+export const useAnkiExport = () => {
   const api = useApi()
   const [isExporting, setIsExporting] = useState(false)
-  const [blob, setBlob] = useState<Blob | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    setBlob(null)
-    setError(null)
-  }, [payload])
+  const buildDeck = useCallback(
+    async (payload: DeckPayload): Promise<Blob | null> => {
+      if (payload.notes.length === 0) return null
 
-  const prepare = useCallback(async () => {
-    if (!payload) return
+      setIsExporting(true)
+      setError(null)
 
-    setIsExporting(true)
-    setError(null)
-    setBlob(null)
-    try {
-      const response = await api.post('/api/lyrics/anki', payload, {
-        responseType: 'blob',
-      })
-      setBlob(new Blob([response.data]))
-    } catch (err: unknown) {
-      const message = await getApiErrorMessage(err, 'Export failed')
-      setError(message)
-    } finally {
-      setIsExporting(false)
-    }
-  }, [api, payload])
+      try {
+        const response = await api.post('/api/lyrics/anki/deck', payload, {
+          responseType: 'blob',
+        })
 
-  const download = useCallback(() => {
-    if (!blob) return
+        return new Blob([response.data])
+      } catch (err: unknown) {
+        const message = await getApiErrorMessage(err, 'Export failed')
+        setError(message)
+
+        return null
+      } finally {
+        setIsExporting(false)
+      }
+    },
+    [api]
+  )
+
+  const download = useCallback((blob: Blob, filename: string) => {
     const objectUrl = URL.createObjectURL(blob)
     const downloadAnchor = document.createElement('a')
     downloadAnchor.href = objectUrl
     downloadAnchor.download = filename.replace(/\//g, '-')
     downloadAnchor.click()
     URL.revokeObjectURL(objectUrl)
-  }, [blob, filename])
+  }, [])
 
-  return { prepare, download, blob, isExporting, error }
+  return { buildDeck, download, isExporting, error }
 }
