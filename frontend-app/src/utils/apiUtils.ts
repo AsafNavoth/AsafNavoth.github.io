@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getErrorMessage } from './commonStringUtils'
 
 // Extract the API error message from an error, handling both JSON and Blob
 // response bodies (e.g. when responseType: 'blob' is used).
@@ -6,7 +7,7 @@ export const getApiErrorMessage = async (
   err: unknown,
   fallback = 'An error occurred'
 ): Promise<string> => {
-  const defaultMessage = err instanceof Error ? err.message : fallback
+  const defaultMessage = getErrorMessage(err, fallback)
   if (!axios.isAxiosError(err) || !err.response?.data) return defaultMessage
 
   const data = err.response.data

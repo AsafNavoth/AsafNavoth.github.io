@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useSnackbar } from '../contexts/snackbar/snackbarContext'
 import { useApi } from './useApi'
 import { getApiErrorMessage } from '../utils/apiUtils'
 import type { AnkiNote } from './useAnkiNotes'
@@ -11,6 +12,7 @@ type DeckPayload = {
 
 export const useAnkiExport = () => {
   const api = useApi()
+  const { enqueueSnackbar } = useSnackbar()
   const [isExporting, setIsExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,13 +32,14 @@ export const useAnkiExport = () => {
       } catch (err: unknown) {
         const message = await getApiErrorMessage(err, 'Export failed')
         setError(message)
+        enqueueSnackbar(message)
 
         return null
       } finally {
         setIsExporting(false)
       }
     },
-    [api]
+    [api, enqueueSnackbar]
   )
 
   const download = useCallback((blob: Blob, filename: string) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -6,16 +6,13 @@ import {
   DialogActions,
   Button,
   TextField,
-  Typography,
 } from '@mui/material'
-
 type DeckNameDialogProps = {
   open: boolean
   defaultName: string
   onClose: () => void
   onConfirm: (deckName: string) => void | Promise<void>
   isDownloading?: boolean
-  error?: string | null
 }
 
 export const DeckNameDialog = ({
@@ -24,13 +21,35 @@ export const DeckNameDialog = ({
   onClose,
   onConfirm,
   isDownloading = false,
-  error = null,
-}: DeckNameDialogProps) => {
-  const [deckName, setDeckName] = useState(defaultName)
+}: DeckNameDialogProps) => (
+  <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <DialogTitle>Name your deck</DialogTitle>
+    {open && (
+      <DeckNameForm
+        key={defaultName}
+        defaultName={defaultName}
+        onConfirm={onConfirm}
+        onClose={onClose}
+        isDownloading={isDownloading}
+      />
+    )}
+  </Dialog>
+)
 
-  useEffect(() => {
-    if (open) setDeckName(defaultName)
-  }, [open, defaultName])
+type DeckNameFormProps = {
+  defaultName: string
+  onConfirm: (deckName: string) => void | Promise<void>
+  onClose: () => void
+  isDownloading: boolean
+}
+
+const DeckNameForm = ({
+  defaultName,
+  onConfirm,
+  onClose,
+  isDownloading,
+}: DeckNameFormProps) => {
+  const [deckName, setDeckName] = useState(defaultName)
 
   const handleConfirm = () => {
     const trimmed = deckName.trim() || defaultName
@@ -38,14 +57,8 @@ export const DeckNameDialog = ({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Name your deck</DialogTitle>
+    <>
       <DialogContent>
-        {error && (
-          <Typography color="error" sx={{ mb: 2 }}>
-            {error}
-          </Typography>
-        )}
         <TextField
           autoFocus
           fullWidth
@@ -74,6 +87,6 @@ export const DeckNameDialog = ({
           {isDownloading ? 'Preparing…' : 'Download'}
         </Button>
       </DialogActions>
-    </Dialog>
+    </>
   )
 }

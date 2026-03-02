@@ -7,6 +7,7 @@ import {
   Box,
 } from '@mui/material'
 import { useReactQuery } from '../../hooks/useReactQuery'
+import { useSnackbar } from '../../contexts/snackbar/snackbarContext'
 import { useAnkiConnect } from '../../hooks/useAnkiConnect'
 import { useAnkiExport } from '../../hooks/useAnkiExport'
 import { useAnkiNotes } from '../../hooks/useAnkiNotes'
@@ -33,10 +34,16 @@ export const LyricsModal = ({
   albumName,
   onClose,
 }: LyricsModalProps) => {
-  const { data, isLoading, error } = useReactQuery<LrclibLyricsDetails>({
+  const { enqueueErrorSnackbar } = useSnackbar()
+  const { data, isLoading } = useReactQuery<LrclibLyricsDetails>({
     queryKey: ['lyrics', lyricsId],
     url: `/api/lyrics/${lyricsId}`,
     enabled: open && lyricsId !== null,
+    throwOnError: (err) => {
+      enqueueErrorSnackbar(err, 'Failed to load lyrics')
+
+      return false
+    },
   })
 
   const lyricsToShow = data?.plainLyrics ?? data?.syncedLyrics ?? ''
@@ -47,18 +54,11 @@ export const LyricsModal = ({
     abortFetch,
     notesData,
     isLoading: isNotesLoading,
-    error: notesError,
   } = useAnkiNotes(payload)
-  const {
-    buildDeck,
-    download,
-    isExporting,
-    error: exportError,
-  } = useAnkiExport()
+  const { buildDeck, download, isExporting } = useAnkiExport()
   const {
     addToAnki,
     isAddingToAnki,
-    error: ankiConnectError,
     clearError: clearAnkiConnectError,
   } = useAnkiConnect()
 
@@ -145,7 +145,6 @@ export const LyricsModal = ({
               <AnkiExportButton
                 disabled={!lyricsToShow}
                 isLoading={isNotesLoading}
-                error={notesError ?? exportError ?? ankiConnectError}
                 onExport={handleExportClick}
               />
             </Box>
@@ -154,11 +153,6 @@ export const LyricsModal = ({
       </DialogTitle>
       <DialogContent>
         {isLoading && <LyricsSkeleton />}
-        {error && (
-          <Typography color="error">
-            {error instanceof Error ? error.message : 'Failed to load lyrics'}
-          </Typography>
-        )}
         {data && !lyricsToShow && data.instrumental && (
           <Typography color="text.secondary">Instrumental track</Typography>
         )}
@@ -183,12 +177,10 @@ export const LyricsModal = ({
           }}
           notesData={notesData}
           isLoading={isNotesLoading}
-          error={notesError}
           onDownload={handleDownloadClick}
           onAddToDeck={handleAddToDeck}
           isDownloading={isExporting}
           isAdding={isAddingToAnki}
-          addError={ankiConnectError}
         />
         <DeckNameDialog
           open={deckNameDialogOpen}
@@ -199,7 +191,6 @@ export const LyricsModal = ({
           }}
           onConfirm={handleDeckNameConfirm}
           isDownloading={isExporting}
-          error={deckNameDialogOpen ? exportError : null}
         />
       </DialogContent>
     </Dialog>

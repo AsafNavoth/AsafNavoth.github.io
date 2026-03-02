@@ -6,7 +6,6 @@ import {
   MenuItem,
   Select,
   Switch,
-  Typography,
 } from '@mui/material'
 import { DeckSelectSkeleton } from '../common/LoadingSkeletons'
 import { useAnkiConnectContext } from '../../contexts/ankiconnect/ankiconnectContext'
@@ -19,7 +18,6 @@ export const AnkiConnectBar = () => {
     selectedDeck,
     setSelectedDeck,
     decks,
-    decksError,
     refreshDecks,
   } = useAnkiConnectContext()
 
@@ -64,11 +62,6 @@ export const AnkiConnectBar = () => {
             </Select>
           </FormControl>
         ))}
-      {decksError && ankiConnectEnabled && (
-        <Typography color="error" variant="body2">
-          {decksError}
-        </Typography>
-      )}
     </Box>
   )
 }

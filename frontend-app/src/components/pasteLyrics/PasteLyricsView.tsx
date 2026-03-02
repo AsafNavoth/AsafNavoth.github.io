@@ -30,14 +30,11 @@ export const PasteLyricsView = () => {
     abortFetch,
     notesData,
     isLoading: isNotesLoading,
-    error: notesError,
   } = useAnkiNotes(payload)
-  const { buildDeck, download, isExporting, error: exportError } =
-    useAnkiExport()
+  const { buildDeck, download, isExporting } = useAnkiExport()
   const {
     addToAnki,
     isAddingToAnki,
-    error: ankiConnectError,
     clearError: clearAnkiConnectError,
   } = useAnkiConnect()
 
@@ -138,7 +135,6 @@ export const PasteLyricsView = () => {
       <AnkiExportButton
         disabled={!canExport}
         isLoading={isNotesLoading}
-        error={notesError ?? exportError ?? ankiConnectError}
         onExport={handleExportClick}
       />
       <NotesChecklistModal
@@ -150,12 +146,10 @@ export const PasteLyricsView = () => {
         }}
         notesData={notesData}
         isLoading={isNotesLoading}
-        error={notesError}
         onDownload={handleDownloadClick}
         onAddToDeck={handleAddToDeck}
         isDownloading={isExporting}
         isAdding={isAddingToAnki}
-        addError={ankiConnectError}
       />
       <DeckNameDialog
         open={deckNameDialogOpen}
@@ -166,7 +160,6 @@ export const PasteLyricsView = () => {
         }}
         onConfirm={handleDeckNameConfirm}
         isDownloading={isExporting}
-        error={deckNameDialogOpen ? exportError : null}
       />
     </Box>
   )

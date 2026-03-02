@@ -23,7 +23,6 @@ type NotesChecklistModalProps = {
   onClose: () => void
   notesData: AnkiNotesData | null
   isLoading: boolean
-  error: string | null
   onDownload: (selectedNotes: AnkiNote[]) => void
   onAddToDeck: (
     selectedNotes: AnkiNote[],
@@ -31,7 +30,6 @@ type NotesChecklistModalProps = {
   ) => void | Promise<void>
   isDownloading?: boolean
   isAdding?: boolean
-  addError?: string | null
 }
 
 export const NotesChecklistModal = ({
@@ -39,12 +37,10 @@ export const NotesChecklistModal = ({
   onClose,
   notesData,
   isLoading,
-  error,
   onDownload,
   onAddToDeck,
   isDownloading = false,
   isAdding = false,
-  addError = null,
 }: NotesChecklistModalProps) => {
   const { ankiConnectEnabled, selectedDeck } = useAnkiConnectContext()
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -104,11 +100,6 @@ export const NotesChecklistModal = ({
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>{dialogTitle}</DialogTitle>
       <DialogContent>
-        {error && (
-          <Typography color="error" sx={{ mb: 2 }}>
-            {error}
-          </Typography>
-        )}
         {isLoading && <NotesChecklistSkeleton />}
         {notesData && !isLoading && (
           <>
@@ -127,11 +118,6 @@ export const NotesChecklistModal = ({
                 {selected.size} of {notesData.notes.length} selected
               </Typography>
             </Box>
-            {addError && ankiConnectEnabled && (
-              <Typography color="error" sx={{ mb: 2 }}>
-                {addError}
-              </Typography>
-            )}
             <List
               dense
               sx={{

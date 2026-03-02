@@ -1,15 +1,16 @@
+import { useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import { flexColumnHalf } from '../../utils/commonStyles'
-import { useState } from 'react'
+import { useSnackbar } from '../../contexts/snackbar/snackbarContext'
 import { useReactQuery } from '../../hooks/useReactQuery'
 import type { LrclibSearchResult } from '../../types/lrclib'
 import { SearchBar } from './SearchBar'
 import { SearchResultsList } from './SearchResultsList'
-import { SearchErrorMessage } from './SearchErrorMessage'
 import { LoadingReplacer } from '../common/LoadingReplacer'
 import { LyricsModal } from '../lyrics/LyricsModal'
 
 export const SearchView = () => {
+  const { enqueueErrorSnackbar } = useSnackbar()
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTrack, setSelectedTrack] = useState<LrclibSearchResult | null>(
@@ -37,11 +38,16 @@ export const SearchView = () => {
     if (trimmed) setSearchQuery(trimmed)
   }
 
-  const { data, isLoading, error } = useReactQuery<LrclibSearchResult[]>({
+  const { data, isLoading } = useReactQuery<LrclibSearchResult[]>({
     queryKey: ['lyrics', searchQuery],
     url: '/api/search',
     config: { params: { q: searchQuery } },
     enabled: !!searchQuery,
+    throwOnError: (err) => {
+      enqueueErrorSnackbar(err, 'Search failed')
+
+      return false
+    },
   })
 
   const showEmptyState = data && data.length === 0 && searchQuery && !isLoading
@@ -56,7 +62,6 @@ export const SearchView = () => {
         onSearch={handleSearch}
       />
       <LoadingReplacer isLoading={isLoading} />
-      <SearchErrorMessage error={error ?? null} />
       {showSearchResults && (
         <SearchResultsList
           results={data}

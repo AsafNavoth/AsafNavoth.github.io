@@ -9,6 +9,7 @@ export type AnkiConnectContextValue = {
   decksError: string | null
   getDeckNames: () => Promise<string[]>
   refreshDecks: () => Promise<void>
+  onConnectionError: () => void
 }
 
 export const AnkiConnectContext = createContext<AnkiConnectContextValue | null>(

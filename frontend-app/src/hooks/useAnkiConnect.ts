@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useContext, useState } from 'react'
 import { type AxiosInstance } from 'axios'
 import { useSnackbar } from '../contexts/snackbar/snackbarContext'
+import { AnkiConnectContext } from '../contexts/ankiconnect/ankiconnectContext'
+import { pluralSuffix } from '../utils/commonStringUtils'
 import {
   ANKI_CONNECTION_ERROR_MESSAGE,
   isAnkiConnectionError,
-  pluralSuffix,
 } from '../utils/commonStringUtils'
 import { getApiErrorMessage } from '../utils/apiUtils'
 import { useApi } from './useApi'
@@ -76,6 +77,7 @@ const invokeAnkiConnect = async <T>(
 export const useAnkiConnect = () => {
   const api = useApi()
   const { enqueueSnackbar } = useSnackbar()
+  const ankiContext = useContext(AnkiConnectContext)
   const [isAdding, setIsAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -185,18 +187,18 @@ export const useAnkiConnect = () => {
           err,
           'Failed to add cards to Anki'
         )
-        if (isAnkiConnectionError(message)) {
-          setError(ANKI_CONNECTION_ERROR_MESSAGE)
-        } else {
-          setError(message)
-        }
-
+        const displayMessage = isAnkiConnectionError(message)
+          ? ANKI_CONNECTION_ERROR_MESSAGE
+          : message
+        setError(displayMessage)
+        enqueueSnackbar(displayMessage)
+        if (isAnkiConnectionError(message)) ankiContext?.onConnectionError()
         throw err
       } finally {
         setIsAdding(false)
       }
     },
-    [api, enqueueSnackbar]
+    [api, enqueueSnackbar, ankiContext]
   )
 
   const getDeckNames = useCallback(async (): Promise<string[]> => {
