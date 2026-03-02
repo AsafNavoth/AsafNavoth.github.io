@@ -1,14 +1,14 @@
 import { useCallback, useContext, useState } from 'react'
-import { type AxiosInstance } from 'axios'
+import axios from 'axios'
 import { useSnackbar } from '../contexts/snackbar/snackbarContext'
 import { AnkiConnectContext } from '../contexts/ankiconnect/ankiconnectContext'
 import { pluralSuffix } from '../utils/commonStringUtils'
 import { ANKI_CONNECTION_ERROR_MESSAGE } from '../utils/commonStringUtils'
 import { getApiErrorMessage, isAnkiConnectionError } from '../utils/apiUtils'
-import { useApi } from './useApi'
 import type { AnkiNote } from './useAnkiNotes'
 
 const ANKICONNECT_VERSION = 6
+const ANKICONNECT_URL = 'http://localhost:8765'
 const EXCLUDED_DECKS = ['Default', 'デフォルト']
 
 const CARD_CSS = `.card {
@@ -39,12 +39,12 @@ type AnkiConnectRequest = {
 }
 
 const invokeAnkiConnect = async <T>(
-  api: AxiosInstance,
   request: AnkiConnectRequest
 ): Promise<T> => {
-  const { data } = await api.post<{ result?: T; error?: string }>(
-    '/api/ankiconnect',
-    request
+  const { data } = await axios.post<{ result?: T; error?: string }>(
+    ANKICONNECT_URL,
+    request,
+    { headers: { 'Content-Type': 'application/json' } }
   )
   if (data.error) {
     throw new Error(data.error)
@@ -58,7 +58,6 @@ const invokeAnkiConnect = async <T>(
 }
 
 export const useAnkiConnect = () => {
-  const api = useApi()
   const { enqueueSnackbar, enqueueErrorSnackbar } = useSnackbar()
   const ankiContext = useContext(AnkiConnectContext)
   const [isAdding, setIsAdding] = useState(false)
@@ -70,7 +69,7 @@ export const useAnkiConnect = () => {
       setIsAdding(true)
       setError(null)
       try {
-        const deckNames = await invokeAnkiConnect<string[]>(api, {
+        const deckNames = await invokeAnkiConnect<string[]>({
           action: 'deckNames',
           version: ANKICONNECT_VERSION,
         })
@@ -81,13 +80,13 @@ export const useAnkiConnect = () => {
           )
         }
 
-        const modelNames = await invokeAnkiConnect<string[]>(api, {
+        const modelNames = await invokeAnkiConnect<string[]>({
           action: 'modelNames',
           version: ANKICONNECT_VERSION,
         })
         const modelExists = modelNames.includes(modelName)
         if (!modelExists) {
-          await invokeAnkiConnect(api, {
+          await invokeAnkiConnect({
             action: 'createModel',
             version: ANKICONNECT_VERSION,
             params: {
@@ -100,7 +99,7 @@ export const useAnkiConnect = () => {
         }
 
         if (modelExists) {
-          await invokeAnkiConnect(api, {
+          await invokeAnkiConnect({
             action: 'updateModelTemplates',
             version: ANKICONNECT_VERSION,
             params: {
@@ -112,7 +111,7 @@ export const useAnkiConnect = () => {
               },
             },
           })
-          await invokeAnkiConnect(api, {
+          await invokeAnkiConnect({
             action: 'updateModelStyling',
             version: ANKICONNECT_VERSION,
             params: { model: { name: modelName, css: CARD_CSS } },
@@ -129,7 +128,7 @@ export const useAnkiConnect = () => {
           }
         }
 
-        await invokeAnkiConnect(api, {
+        await invokeAnkiConnect({
           action: 'createDeck',
           version: ANKICONNECT_VERSION,
           params: { deck: targetDeck },
@@ -141,7 +140,7 @@ export const useAnkiConnect = () => {
           fields: getFieldsForNote(note),
         }))
 
-        const canAdd = await invokeAnkiConnect<boolean[]>(api, {
+        const canAdd = await invokeAnkiConnect<boolean[]>({
           action: 'canAddNotes',
           version: ANKICONNECT_VERSION,
           params: { notes: notesToAdd },
@@ -151,7 +150,7 @@ export const useAnkiConnect = () => {
         const skippedNotesCount = notesToAdd.length - filteredNotesToAdd.length
 
         if (filteredNotesToAdd.length > 0) {
-          await invokeAnkiConnect<number[]>(api, {
+          await invokeAnkiConnect<number[]>({
             action: 'addNotes',
             version: ANKICONNECT_VERSION,
             params: { notes: filteredNotesToAdd },
@@ -182,15 +181,15 @@ export const useAnkiConnect = () => {
         setIsAdding(false)
       }
     },
-    [api, enqueueSnackbar, enqueueErrorSnackbar, ankiContext]
+    [enqueueSnackbar, enqueueErrorSnackbar, ankiContext]
   )
 
   const getDeckNames = useCallback(async (): Promise<string[]> => {
-    return invokeAnkiConnect<string[]>(api, {
+    return invokeAnkiConnect<string[]>({
       action: 'deckNames',
       version: ANKICONNECT_VERSION,
     })
-  }, [api])
+  }, [])
 
   const clearError = useCallback(() => setError(null), [])
 

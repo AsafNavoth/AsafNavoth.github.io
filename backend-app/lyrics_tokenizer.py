@@ -1,6 +1,7 @@
 import html
 import logging
 import re
+import threading
 import unicodedata
 
 from jamdict import Jamdict
@@ -17,7 +18,12 @@ class JamdictNotAvailableError(Exception):
 
 
 _tokenizer = None
-_jamdict = None
+# Thread-local storage for Jamdict. Jamdict uses puchikarui, which uses SQLite.
+# SQLite connections must only be used in the thread that created them. Flask runs
+# each request in its own thread, so sharing a single Jamdict instance across
+# requests causes "SQLite objects created in a thread can only be used in that same
+# thread" errors when exporting multiple songs in sequence.
+_jamdict_local = threading.local()
 
 
 def _get_tokenizer():
@@ -28,14 +34,20 @@ def _get_tokenizer():
 
 
 def _get_jamdict():
-    global _jamdict
-    if _jamdict is None:
-        try:
-            _jamdict = Jamdict(db_file=JAMDICT_DB_PATH)
-        except Exception as e:
-            logger.error("_get_jamdict: failed to load err=%s", e)
-            _jamdict = False  # Mark as failed so we don't retry
-    return _jamdict if _jamdict else None
+    jam = getattr(_jamdict_local, 'jam', None)
+    failed = getattr(_jamdict_local, 'failed', False)
+    if jam is not None:
+        return jam
+    if failed:
+        return None
+    try:
+        jam = Jamdict(db_file=JAMDICT_DB_PATH)
+        _jamdict_local.jam = jam
+        return jam
+    except Exception as e:
+        logger.error("_get_jamdict: failed to load err=%s", e)
+        _jamdict_local.failed = True
+        return None
 
 
 def _empty_lookup_result() -> dict:
@@ -225,8 +237,9 @@ def _tokenize_lyrics_impl(text: str) -> list[tuple[str, dict, list[str]]]:
 
     # If all lookups returned empty, jamdict may be corrupted. Retry with a fresh instance.
     if found_count == 0 and len(tokenized) > 0:
-        global _jamdict
-        _jamdict = None
+        for attr in ('jam', 'failed'):
+            if hasattr(_jamdict_local, attr):
+                delattr(_jamdict_local, attr)
         jam = _get_jamdict()
 
         if jam is not None:
