@@ -1,16 +1,13 @@
 export const getErrorMessage = (
-  errOrMessage: unknown,
+  errorMessage: unknown,
   fallback: string
 ): string => {
-  if (typeof errOrMessage === 'string') return errOrMessage
+  if (typeof errorMessage === 'string') return errorMessage
 
-  if (errOrMessage instanceof Error) return errOrMessage.message
+  if (errorMessage instanceof Error) return errorMessage.message
 
   return fallback
 }
-
-export const ANKI_CONNECTION_ERROR_MESSAGE =
-  'Cannot connect to Anki. Make sure Anki is running and AnkiConnect add-on is installed.'
 
 export const getPluralSuffix = (count: number, suffix = 's'): string =>
   count === 1 ? '' : suffix

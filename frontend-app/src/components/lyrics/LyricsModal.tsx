@@ -18,6 +18,7 @@ import { LyricsSkeleton } from '../common/LoadingSkeletons'
 import { AnkiExportButton } from '../anki/AnkiExportButton'
 import { NotesChecklistModal } from '../anki/NotesChecklistModal'
 import { getFlexRowCenterStyle } from '../../utils/commonStyles'
+import { LYRICS_API_PATH } from '../../utils/apiUtils'
 
 type LyricsModalProps = {
   open: boolean
@@ -59,7 +60,7 @@ export const LyricsModal = ({
   const { enqueueErrorSnackbar } = useSnackbar()
   const { data, isLoading } = useReactQuery<LrclibLyricsDetails>({
     queryKey: ['lyricsDetails', lyricsId],
-    url: `/api/lyrics/${lyricsId}`,
+    url: `${LYRICS_API_PATH}/${lyricsId}`,
     enabled: open && lyricsId !== null,
     throwOnError: (error) => {
       enqueueErrorSnackbar(error, 'Failed to load lyrics')

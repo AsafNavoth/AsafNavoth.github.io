@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { useSnackbar } from '../contexts/snackbar/snackbarContext'
 import { useApi } from './useApi'
-import { getApiErrorMessage } from '../utils/apiUtils'
+import { getApiErrorMessage, LYRICS_ANKI_NOTES_API_PATH } from '../utils/apiUtils'
 
 export type AnkiNote = { fields: Record<string, string> }
 
@@ -48,7 +48,7 @@ export const useAnkiNotes = (payload: AnkiNotesPayload | null) => {
 
     try {
       const { data } = await api.post<AnkiNotesData>(
-        '/api/lyrics/anki/notes',
+        LYRICS_ANKI_NOTES_API_PATH,
         payload,
         { signal: controller.signal }
       )

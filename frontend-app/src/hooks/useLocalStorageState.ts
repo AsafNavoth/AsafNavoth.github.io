@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { getStorageItem, setStorageItem } from '../utils/storage'
 
 type UseLocalStorageStateOptions<T> = {
-  key: string
+  localStorageKey: string
   defaultValue: T
   parse?: (value: string) => T | null
   serialize?: (value: T) => string
@@ -11,17 +11,17 @@ type UseLocalStorageStateOptions<T> = {
 const identityParse = <T>(v: string): T => v as T
 const defaultSerialize = (v: unknown): string => String(v)
 
-export const useLocalStorageState = <T>(
-  options: UseLocalStorageStateOptions<T>
-): [T, (value: T | ((prev: T) => T)) => void] => {
-  const { key, defaultValue } = options
-  const parse = options.parse ?? identityParse
-  const serialize = options.serialize ?? defaultSerialize
+export const useLocalStorageState = <T>({
+  localStorageKey,
+  defaultValue,
+  parse = identityParse,
+  serialize = defaultSerialize,
+}: UseLocalStorageStateOptions<T>): [T, (value: T | ((prev: T) => T)) => void] => {
   const serializeRef = useRef(serialize)
   serializeRef.current = serialize
 
   const [state, setState] = useState<T>(() =>
-    getStorageItem(key, parse, defaultValue)
+    getStorageItem(localStorageKey, parse, defaultValue)
   )
 
   const setValue = useCallback(
@@ -29,12 +29,12 @@ export const useLocalStorageState = <T>(
       setState((prev) => {
         const next = value instanceof Function ? value(prev) : value
 
-        setStorageItem(key, serializeRef.current(next))
+        setStorageItem(localStorageKey, serializeRef.current(next))
 
         return next
       })
     },
-    [key]
+    [localStorageKey]
   )
 
   return [state, setValue]

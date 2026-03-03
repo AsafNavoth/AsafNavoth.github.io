@@ -8,6 +8,7 @@ import { SearchBar } from './SearchBar'
 import { SearchResultsList } from './SearchResultsList'
 import { SearchResultsSkeleton } from '../common/LoadingSkeletons'
 import { LyricsModal } from '../lyrics/LyricsModal'
+import { SEARCH_API_PATH } from '../../utils/apiUtils'
 
 type SearchViewProps = {
   hideTitle?: boolean
@@ -45,7 +46,7 @@ export const SearchView = ({ hideTitle = false }: SearchViewProps) => {
 
   const { data, isLoading } = useReactQuery<LrclibSearchResult[]>({
     queryKey: ['lyricsSearch', searchQuery],
-    url: '/api/search',
+    url: SEARCH_API_PATH,
     config: { params: { q: searchQuery } },
     enabled: !!searchQuery,
     throwOnError: (error) => {

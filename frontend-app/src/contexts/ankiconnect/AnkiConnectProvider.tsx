@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSnackbar } from '../snackbar/snackbarContext'
 import { useThemeMode } from '../theme/themeContext'
 import { getErrorMessage } from '../../utils/commonStringUtils'
-import { ANKI_CONNECTION_ERROR_MESSAGE } from '../../utils/commonStringUtils'
-import { isAnkiConnectionError } from '../../utils/apiUtils'
+import {
+  ANKI_CONNECTION_ERROR_MESSAGE,
+  isAnkiConnectionError,
+} from '../../utils/apiUtils'
 import { useAnkiConnect } from '../../hooks/useAnkiConnect'
 import { useLocalStorageState } from '../../hooks/useLocalStorageState'
 import { excludedDecks } from '../../env'
@@ -22,12 +24,12 @@ export const AnkiConnectProvider = ({ children }: AnkiConnectProviderProps) => {
   const { getDeckNames } = useAnkiConnect()
   const { enqueueErrorSnackbar } = useSnackbar()
   const [ankiConnectEnabled, setAnkiConnectEnabled] = useLocalStorageState({
-    key: ANKICONNECT_ENABLED_KEY,
+    localStorageKey: ANKICONNECT_ENABLED_KEY,
     defaultValue: false,
     parse: (storedValue) => (storedValue === 'true' ? true : null),
   })
   const [selectedDeck, setSelectedDeck] = useLocalStorageState({
-    key: SELECTED_DECK_KEY,
+    localStorageKey: SELECTED_DECK_KEY,
     defaultValue: '',
   })
   const [decks, setDecks] = useState<string[] | null>(null)

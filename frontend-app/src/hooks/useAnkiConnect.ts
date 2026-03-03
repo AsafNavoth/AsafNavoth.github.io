@@ -4,8 +4,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useSnackbar } from '../contexts/snackbar/snackbarContext'
 import { AnkiConnectContext } from '../contexts/ankiconnect/ankiconnectContext'
 import { getPluralSuffix } from '../utils/commonStringUtils'
-import { ANKI_CONNECTION_ERROR_MESSAGE } from '../utils/commonStringUtils'
-import { getApiErrorMessage, isAnkiConnectionError } from '../utils/apiUtils'
+import {
+  ANKI_CONNECTION_ERROR_MESSAGE,
+  getApiErrorMessage,
+  isAnkiConnectionError,
+  LYRICS_ANKI_MODEL_CONFIG_API_PATH,
+} from '../utils/apiUtils'
 import { useApi } from './useApi'
 import { useReactQuery } from './useReactQuery'
 import { excludedDecks } from '../env'
@@ -89,7 +93,7 @@ export const useAnkiConnect = () => {
 
   useReactQuery<AnkiModelConfig>({
     queryKey: ANKI_MODEL_CONFIG_QUERY_KEY,
-    url: '/api/lyrics/anki/model-config',
+    url: LYRICS_ANKI_MODEL_CONFIG_API_PATH,
     enabled: ankiContext?.ankiConnectEnabled ?? false,
   })
 
@@ -103,7 +107,7 @@ export const useAnkiConnect = () => {
           queryKey: ANKI_MODEL_CONFIG_QUERY_KEY,
           queryFn: async () => {
             const { data } = await api.get<AnkiModelConfig | null>(
-              '/api/lyrics/anki/model-config'
+              LYRICS_ANKI_MODEL_CONFIG_API_PATH
             )
 
             if (!data) throw new Error('Failed to fetch model config')
@@ -154,6 +158,7 @@ export const useAnkiConnect = () => {
               { Front: template.front, Back: template.back },
             ])
           )
+
           await invokeAnkiConnect({
             action: 'updateModelTemplates',
             version: ANKICONNECT_VERSION,
@@ -161,6 +166,7 @@ export const useAnkiConnect = () => {
               model: { name: modelName, templates },
             },
           })
+
           await invokeAnkiConnect({
             action: 'updateModelStyling',
             version: ANKICONNECT_VERSION,

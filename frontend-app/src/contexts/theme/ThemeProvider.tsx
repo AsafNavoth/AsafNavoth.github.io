@@ -20,7 +20,7 @@ const MOBILE_UA_REGEX =
 const getIsMobileFromUserAgent = (): boolean =>
   typeof navigator !== 'undefined' && MOBILE_UA_REGEX.test(navigator.userAgent)
 
-const STORAGE_KEY = 'utanki-theme-mode'
+const THEME_MODE_STORAGE_KEY = 'utanki-theme-mode'
 
 const getThemeModeFromString = (inputString: string): ThemeMode | null => {
   switch (inputString) {
@@ -38,7 +38,7 @@ type ThemeProviderProps = {
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [mode, setMode] = useLocalStorageState<ThemeMode>({
-    key: STORAGE_KEY,
+    localStorageKey: THEME_MODE_STORAGE_KEY,
     defaultValue: LIGHT_THEME_STRING,
     parse: getThemeModeFromString,
   })

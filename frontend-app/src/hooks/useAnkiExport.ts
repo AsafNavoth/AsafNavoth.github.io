@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useSnackbar } from '../contexts/snackbar/snackbarContext'
 import { useApi } from './useApi'
-import { getApiErrorMessage } from '../utils/apiUtils'
+import { getApiErrorMessage, LYRICS_ANKI_DECK_API_PATH } from '../utils/apiUtils'
 import type { AnkiNote } from './useAnkiNotes'
 
 type DeckPayload = {
@@ -24,7 +24,7 @@ export const useAnkiExport = () => {
       setError(null)
 
       try {
-        const response = await api.post('/api/lyrics/anki/deck', payload, {
+        const response = await api.post(LYRICS_ANKI_DECK_API_PATH, payload, {
           responseType: 'blob',
         })
 

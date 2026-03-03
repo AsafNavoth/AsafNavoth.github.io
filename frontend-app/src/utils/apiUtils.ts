@@ -3,6 +3,17 @@ import { getErrorMessage } from './commonStringUtils'
 
 const ANKI_CONNECTION_ERROR_CODE = 'ANKI_CONNECTION'
 
+export const ANKI_CONNECTION_ERROR_MESSAGE =
+  'Cannot connect to Anki. Make sure Anki is running and AnkiConnect add-on is installed.'
+
+// API paths
+export const SEARCH_API_PATH = '/api/search'
+export const LYRICS_API_PATH = '/api/lyrics'
+export const LYRICS_ANKI_DECK_API_PATH = `${LYRICS_API_PATH}/anki/deck`
+export const LYRICS_ANKI_MODEL_CONFIG_API_PATH = `${LYRICS_API_PATH}/anki/model-config`
+export const LYRICS_ANKI_NOTES_API_PATH = `${LYRICS_API_PATH}/anki/notes`
+
+
 const getErrorCode = (responseData: object): string | undefined => {
   const errorCodeValue = Object.getOwnPropertyDescriptor(
     responseData,
