@@ -2,7 +2,7 @@ import requests_mock
 from unittest.mock import patch
 
 from config import LRCLIB_BASE_URL
-from lyrics_tokenizer import (
+from lyrics_vocabulary_extractor import (
     get_sentence_for_word,
     remove_non_japanese_chars,
     _should_keep_token,
@@ -137,7 +137,7 @@ def test_export_anki_deck_returns_apkg_from_notes(client):
     """POST /api/lyrics/anki/deck builds deck from notes payload."""
     payload = {
         'deckName': 'Test Deck',
-        'modelName': 'Lyrics Vocabulary',
+        'modelName': 'Utanki - Lyrics Vocabulary',
         'notes': [
             {
                 'fields': {
@@ -167,7 +167,7 @@ def test_export_anki_deck_returns_apkg_from_notes(client):
 
 
 def test_export_anki_deck_returns_400_when_no_notes(client):
-    payload = {'deckName': 'Test', 'modelName': 'Lyrics Vocabulary', 'notes': []}
+    payload = {'deckName': 'Test', 'modelName': 'Utanki - Lyrics Vocabulary', 'notes': []}
     response = client.post(
         '/api/lyrics/anki/deck',
         json=payload,
@@ -178,7 +178,7 @@ def test_export_anki_deck_returns_400_when_no_notes(client):
 
 def test_export_anki_deck_returns_400_when_no_deck_name(client):
     payload = {
-        'modelName': 'Lyrics Vocabulary',
+        'modelName': 'Utanki - Lyrics Vocabulary',
         'notes': [{'fields': {'Word': '花', 'Sentence': '', 'Word Meaning': 'flower'}}],
     }
     response = client.post(
@@ -193,7 +193,7 @@ def test_export_anki_deck_returns_400_when_no_deck_name(client):
 def test_export_anki_notes_returns_json(mock_build, client):
     mock_build.return_value = {
         'deckName': 'Test - Artist',
-        'modelName': 'Lyrics Vocabulary',
+        'modelName': 'Utanki - Lyrics Vocabulary',
         'notes': [
             {
                 'fields': {
@@ -217,7 +217,7 @@ def test_export_anki_notes_returns_json(mock_build, client):
     assert response.status_code == 200
     data = response.get_json()
     assert data['deckName'] == 'Test - Artist'
-    assert data['modelName'] == 'Lyrics Vocabulary'
+    assert data['modelName'] == 'Utanki - Lyrics Vocabulary'
     assert len(data['notes']) == 1
     fields = data['notes'][0]['fields']
     assert fields['Word'] == '花'
@@ -270,11 +270,11 @@ def test_get_sentence_for_word_truncates_long_paragraphs():
     assert result.startswith('…') or result.endswith('…')
 
 
-@patch('anki_deck.tokenize_lyrics')
+@patch('lyrics_anki_builder.extract_vocabulary_from_lyrics')
 def test_build_anki_notes_json_includes_sentences_when_tokenizer_returns_surface_forms(
-    mock_tokenize, client
+    mock_extract_vocabulary, client
 ):
-    """Full API flow: notes include Sentence when tokenizer provides surface forms."""
+    """Full API flow: notes include Sentence when vocabulary extraction provides surface forms."""
 
     def _mock_entry(word, gloss):
         return {
@@ -282,7 +282,7 @@ def test_build_anki_notes_json_includes_sentences_when_tokenizer_returns_surface
             'senses': [{'SenseGloss': [{'text': gloss, 'lang': 'eng'}]}],
         }
 
-    mock_tokenize.return_value = [
+    mock_extract_vocabulary.return_value = [
         (
             '飲む',
             {'entries': [_mock_entry('飲む', 'to drink')], 'names': [], 'chars': []},

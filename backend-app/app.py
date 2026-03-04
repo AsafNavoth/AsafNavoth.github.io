@@ -16,8 +16,8 @@ for logger_name in (
     'decorators',
     'routes.lyrics',
     'routes.search',
-    'lyrics_tokenizer',
-    'anki_deck',
+    'lyrics_vocabulary_extractor',
+    'lyrics_anki_builder',
 ):
     logging.getLogger(logger_name).setLevel(logging.INFO)
 

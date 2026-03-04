@@ -6,6 +6,11 @@ const ANKI_CONNECTION_ERROR_CODE = 'ANKI_CONNECTION';
 export const ANKI_CONNECTION_ERROR_MESSAGE =
   'Cannot connect to Anki. Make sure Anki is running and AnkiConnect add-on is installed.';
 
+// Anki model field names - must match backend FIELD_* constants
+export const ANKI_FIELD_WORD = 'Word';
+export const ANKI_FIELD_SENTENCE = 'Sentence';
+export const ANKI_FIELD_WORD_MEANING = 'Word Meaning';
+
 // API paths
 export const SEARCH_API_PATH = '/api/search';
 export const LYRICS_API_PATH = '/api/lyrics';

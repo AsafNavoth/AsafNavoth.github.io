@@ -17,6 +17,10 @@ import {
 } from '@mui/material';
 import { NotesChecklistSkeleton } from '../common/LoadingSkeletons';
 import {
+  ANKI_FIELD_WORD,
+  ANKI_FIELD_WORD_MEANING,
+} from '../../utils/apiUtils';
+import {
   getTextWithoutHtml,
   getTruncatedText,
 } from '../../utils/commonStringUtils';
@@ -177,11 +181,8 @@ const NotesChecklistContent = ({
             </SelectAllRow>
             <NotesList dense>
               {notesData.notes.map((note, index) => {
-                const word = note.fields?.Word ?? '';
-                const def =
-                  note.fields?.['Word Meaning'] ??
-                  note.fields?.Definition ??
-                  '';
+                const word = note.fields?.[ANKI_FIELD_WORD] ?? '';
+                const def = note.fields?.[ANKI_FIELD_WORD_MEANING] ?? '';
                 const defPreview = getTruncatedText(
                   getTextWithoutHtml(def),
                   60

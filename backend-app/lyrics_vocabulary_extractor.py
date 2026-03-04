@@ -225,15 +225,15 @@ def _lookup_words_in_jamdict(
     ]
 
 
-def _count_successful_jamdict_lookups(tokenized: list) -> int:
-    """Return number of tokenized items with a successful jamdict lookup."""
+def _count_successful_jamdict_lookups(vocabulary_lookups: list) -> int:
+    """Return number of vocabulary lookups with a successful jamdict result."""
     return sum(
-        1 for _word, lookup_result, _surfaces in tokenized if lookup_result.get('found')
+        1 for _word, lookup_result, _surfaces in vocabulary_lookups if lookup_result.get('found')
     )
 
 
-def _tokenize_lyrics_impl(text: str) -> list[tuple[str, dict, list[str]]]:
-    """Internal implementation of tokenize_lyrics."""
+def _extract_vocabulary_from_lyrics_impl(text: str) -> list[tuple[str, dict, list[str]]]:
+    """Internal implementation of extract_vocabulary_from_lyrics."""
     if not text or not text.strip():
         return []
 
@@ -274,25 +274,25 @@ def _tokenize_lyrics_impl(text: str) -> list[tuple[str, dict, list[str]]]:
     if jam is None:
         return []
 
-    tokenized = _lookup_words_in_jamdict(jam, unique_words, dict_to_surfaces)
-    found_count = _count_successful_jamdict_lookups(tokenized)
+    vocabulary_lookups = _lookup_words_in_jamdict(jam, unique_words, dict_to_surfaces)
+    found_count = _count_successful_jamdict_lookups(vocabulary_lookups)
 
     # If all lookups returned empty, jamdict may be corrupted. Retry with a fresh instance.
-    if found_count == 0 and len(tokenized) > 0:
+    if found_count == 0 and len(vocabulary_lookups) > 0:
         for attr in ('jam', 'failed'):
             if hasattr(_jamdict_local, attr):
                 delattr(_jamdict_local, attr)
         jam = _get_jamdict()
 
         if jam is not None:
-            tokenized = _lookup_words_in_jamdict(jam, unique_words, dict_to_surfaces)
-            found_count = _count_successful_jamdict_lookups(tokenized)
-    return tokenized
+            vocabulary_lookups = _lookup_words_in_jamdict(jam, unique_words, dict_to_surfaces)
+            found_count = _count_successful_jamdict_lookups(vocabulary_lookups)
+    return vocabulary_lookups
 
 
 @log_call
-def tokenize_lyrics(text: str) -> list[tuple[str, dict, list[str]]]:
-    """Tokenize lyrics and return unique (word, jamdict_result, surface_forms) tuples.
+def extract_vocabulary_from_lyrics(text: str) -> list[tuple[str, dict, list[str]]]:
+    """Extract vocabulary from lyrics: tokenize, lookup in jamdict, return (word, jamdict_result, surface_forms).
     surface_forms are used for sentence extraction (handles Japanese verb conjugation).
     """
-    return _tokenize_lyrics_impl(text)
+    return _extract_vocabulary_from_lyrics_impl(text)

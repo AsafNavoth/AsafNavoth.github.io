@@ -1,4 +1,4 @@
-"""Generate Anki decks from tokenized lyrics with jamdict definitions."""
+"""Generate Anki decks from lyrics vocabulary with jamdict definitions."""
 
 import html
 import os
@@ -7,10 +7,10 @@ import tempfile
 
 import genanki
 
-from lyrics_tokenizer import (
+from lyrics_vocabulary_extractor import (
     extract_lyrics_text,
+    extract_vocabulary_from_lyrics,
     get_sentence_for_word,
-    tokenize_lyrics,
 )
 
 # Stable IDs for the model and deck
@@ -20,7 +20,8 @@ DECK_ID = 2059400111
 MAX_DEFINITIONS = 5
 
 # Model/field names for Anki cards
-ANKI_MODEL_NAME = "Lyrics Vocabulary"
+ANKI_MODEL_NAME = "Utanki - Lyrics Vocabulary"
+API_FIELDS_KEY = "fields"
 FIELD_WORD = "Word"
 FIELD_SENTENCE = "Sentence"
 FIELD_WORD_MEANING = "Word Meaning"
@@ -39,7 +40,7 @@ class NoVocabularyCardsError(Exception):
 
 
 class NoDefinitionsError(Exception):
-    """Raised when tokenized words have no jamdict definitions."""
+    """Raised when vocabulary words have no jamdict definitions."""
 
     def __init__(self, message: str = ERROR_NO_DEFINITIONS):
         super().__init__(message)
@@ -154,7 +155,7 @@ def get_anki_model_config() -> dict:
     """Return model config for AnkiConnect."""
     return {
         "modelName": ANKI_MODEL_NAME,
-        "fields": [FIELD_WORD, FIELD_SENTENCE, FIELD_WORD_MEANING],
+        API_FIELDS_KEY: [FIELD_WORD, FIELD_SENTENCE, FIELD_WORD_MEANING],
         "cardTemplates": [
             {"name": "Card 1", "front": FRONT_TEMPLATE, "back": BACK_TEMPLATE},
         ],
@@ -185,13 +186,13 @@ def _get_anki_model() -> genanki.Model:
     return _anki_model_cache
 
 
-def _build_notes_from_tokenized(
-    tokenized: list[tuple[str, str, dict]],
+def _build_notes_from_vocabulary(
+    vocabulary_with_sentences: list[tuple[str, str, dict]],
 ) -> list[tuple[str, str, str]]:
     """Return list of (word, sentence, definition_html) for words that have definitions."""
     no_definition = html.escape(NO_DEFINITION_FOUND)
     notes = []
-    for word, sentence, result in tokenized:
+    for word, sentence, result in vocabulary_with_sentences:
         definition_html = _format_jamdict_result(result)
         if definition_html == no_definition:
             continue
@@ -202,14 +203,14 @@ def _build_notes_from_tokenized(
 def _prepare_lyrics_data(
     lyrics_data: dict, deck_name: str | None = None
 ) -> tuple[list[tuple[str, str, dict]], str]:
-    """Extract lyrics text, tokenize, and compute deck name. Returns (tokenized, deck_name)."""
+    """Extract lyrics text, extract vocabulary, and compute deck name. Returns (vocabulary_with_sentences, deck_name)."""
     lyrics_text = extract_lyrics_text(lyrics_data)
-    tokenized_raw = tokenize_lyrics(lyrics_text)
+    vocabulary_lookups = extract_vocabulary_from_lyrics(lyrics_text)
     # Use original lyrics (with newlines) for line structure; surface forms match since
     # they're the same Japanese chars (cleaning only removes English/normalizes spaces)
-    tokenized = [
+    vocabulary_with_sentences = [
         (word, get_sentence_for_word(word, lyrics_text, surface_forms), result)
-        for word, result, surface_forms in tokenized_raw
+        for word, result, surface_forms in vocabulary_lookups
     ]
 
     track_name = lyrics_data.get("trackName", "Unknown")
@@ -217,7 +218,7 @@ def _prepare_lyrics_data(
     name = f"{track_name} - {artist_name}" if artist_name else track_name
     deck_name = deck_name or name
 
-    return tokenized, deck_name
+    return vocabulary_with_sentences, deck_name
 
 
 def build_anki_deck_from_notes(
@@ -230,13 +231,11 @@ def build_anki_deck_from_notes(
     model = _get_anki_model()
     deck = genanki.Deck(DECK_ID, deck_name)
     for note_data in notes:
-        fields = note_data.get("fields", {})
+        fields = note_data.get(API_FIELDS_KEY, {})
         word = fields.get(FIELD_WORD, "")
         sentence = fields.get(FIELD_SENTENCE, "")
-        word_meaning = fields.get(FIELD_WORD_MEANING, "") or fields.get(
-            "Definition", ""
-        )
-        if word or word_meaning:
+        word_meaning = fields.get(FIELD_WORD_MEANING, "")
+        if word and word_meaning:
             note = genanki.Note(
                 model=model,
                 fields=[word, sentence, word_meaning],
@@ -256,23 +255,23 @@ def build_anki_deck_from_notes(
 
 def build_anki_notes_json(lyrics_data: dict, deck_name: str | None = None) -> dict:
     """Build note data for AnkiConnect. Returns dict with deckName, modelName, notes."""
-    tokenized, deck_name = _prepare_lyrics_data(lyrics_data, deck_name)
-    note_pairs = _build_notes_from_tokenized(tokenized)
+    vocabulary_with_sentences, deck_name = _prepare_lyrics_data(lyrics_data, deck_name)
+    notes_with_fields = _build_notes_from_vocabulary(vocabulary_with_sentences)
 
-    if not note_pairs:
-        if not tokenized:
+    if not notes_with_fields:
+        if not vocabulary_with_sentences:
             raise NoVocabularyCardsError()
         raise NoDefinitionsError()
 
     notes = [
         {
-            "fields": {
+            API_FIELDS_KEY: {
                 FIELD_WORD: word,
                 FIELD_SENTENCE: sentence,
                 FIELD_WORD_MEANING: definition_html,
             }
         }
-        for word, sentence, definition_html in note_pairs
+        for word, sentence, definition_html in notes_with_fields
     ]
     random.shuffle(notes)
 

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
 
-from anki_deck import (
+from lyrics_anki_builder import (
     FIELD_SENTENCE,
     FIELD_WORD,
     FIELD_WORD_MEANING,
@@ -78,24 +78,24 @@ def test_build_anki_deck_from_notes_produces_valid_apkg():
 
 
 def test_build_anki_notes_json_raises_when_no_definitions_found():
-    """build_anki_notes_json raises when tokenized words have no jamdict definitions."""
+    """build_anki_notes_json raises when vocabulary words have no jamdict definitions."""
     lyrics_data = {
         'plainLyrics': '花',
         'trackName': 'Test',
         'artistName': 'Artist',
     }
-    # tokenize_lyrics returns (word, lookup_result, surface_forms)
-    tokenized_with_no_definitions = [
+    # extract_vocabulary_from_lyrics returns (word, lookup_result, surface_forms)
+    vocabulary_lookups_with_no_definitions = [
         ('花', {'entries': [], 'names': [], 'chars': [], 'found': False}, []),
     ]
 
     with pytest.raises(NoDefinitionsError, match='No definitions found for any word'):
         with patch(
-            'anki_deck.tokenize_lyrics',
-            return_value=tokenized_with_no_definitions,
+            'lyrics_anki_builder.extract_vocabulary_from_lyrics',
+            return_value=vocabulary_lookups_with_no_definitions,
         ):
             with patch(
-                'anki_deck.get_sentence_for_word',
+                'lyrics_anki_builder.get_sentence_for_word',
                 side_effect=lambda word, _text, _forms: word,
             ):
                 build_anki_notes_json(lyrics_data)

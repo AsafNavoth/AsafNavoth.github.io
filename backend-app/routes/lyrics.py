@@ -2,7 +2,7 @@ from flask import Blueprint, Response, jsonify, request
 import requests
 from requests.exceptions import HTTPError, RequestException
 
-from anki_deck import (
+from lyrics_anki_builder import (
     NoDefinitionsError,
     NoVocabularyCardsError,
     build_anki_deck_from_notes,
@@ -11,7 +11,7 @@ from anki_deck import (
 )
 from config import LRCLIB_BASE_URL, MAX_LYRICS_CHARS
 from decorators import log_route
-from lyrics_tokenizer import JamdictNotAvailableError, extract_lyrics_text
+from lyrics_vocabulary_extractor import JamdictNotAvailableError, extract_lyrics_text
 
 lyrics_bp = Blueprint('lyrics', __name__)
 

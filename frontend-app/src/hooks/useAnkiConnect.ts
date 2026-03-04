@@ -52,12 +52,6 @@ const invokeAnkiConnect = async <T>(
   return result;
 };
 
-const FIELD_ALIASES: Record<string, string[]> = {
-  Word: ['Word', 'word'],
-  Sentence: ['Sentence', 'sentence'],
-  'Word Meaning': ['Word Meaning', 'WordMeaning', 'Definition'],
-};
-
 const getFieldsForNoteFromConfig = (
   note: AnkiNote,
   fieldNames: string[]
@@ -65,19 +59,10 @@ const getFieldsForNoteFromConfig = (
   const noteFields = note.fields ?? {};
 
   return Object.fromEntries(
-    fieldNames.map((canonicalFieldName) => {
-      const possibleKeys = FIELD_ALIASES[canonicalFieldName] ?? [
-        canonicalFieldName,
-      ];
-      const firstNonEmptyValue = possibleKeys
-        .map((aliasKey) => noteFields[aliasKey])
-        .find(
-          (candidateValue) =>
-            candidateValue !== undefined && candidateValue !== ''
-        );
-
-      return [canonicalFieldName, String(firstNonEmptyValue ?? '')];
-    })
+    fieldNames.map((fieldName) => [
+      fieldName,
+      String(noteFields[fieldName] ?? ''),
+    ])
   );
 };
 
