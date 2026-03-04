@@ -35,8 +35,8 @@ def search():
     except HTTPError:
         return jsonify(lrclib_response.json()), lrclib_response.status_code
 
-    except RequestException as error:
+    except RequestException as e:
         return (
-            jsonify({'error': 'Failed to reach lyrics service', 'detail': str(error)}),
+            jsonify({'error': 'Failed to reach lyrics service', 'detail': str(e)}),
             502,
         )

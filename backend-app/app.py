@@ -12,14 +12,14 @@ logging.basicConfig(
 )
 
 # Enable INFO for our app; third-party libs stay at WARNING
-for name in (
+for logger_name in (
     'decorators',
     'routes.lyrics',
     'routes.search',
     'lyrics_tokenizer',
     'anki_deck',
 ):
-    logging.getLogger(name).setLevel(logging.INFO)
+    logging.getLogger(logger_name).setLevel(logging.INFO)
 
 app = Flask(__name__)
 CORS(app)

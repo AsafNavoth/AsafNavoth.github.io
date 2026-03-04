@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -6,14 +6,14 @@ import {
   DialogActions,
   Button,
   TextField,
-} from '@mui/material'
+} from '@mui/material';
 type DeckNameDialogProps = {
-  open: boolean
-  defaultName: string
-  onClose: () => void
-  onConfirm: (deckName: string) => void | Promise<void>
-  isDownloading?: boolean
-}
+  open: boolean;
+  defaultName: string;
+  onClose: () => void;
+  onConfirm: (deckName: string) => void | Promise<void>;
+  isDownloading?: boolean;
+};
 
 export const DeckNameDialog = ({
   open,
@@ -34,14 +34,14 @@ export const DeckNameDialog = ({
       />
     )}
   </Dialog>
-)
+);
 
 type DeckNameFormProps = {
-  defaultName: string
-  onConfirm: (deckName: string) => void | Promise<void>
-  onClose: () => void
-  isDownloading: boolean
-}
+  defaultName: string;
+  onConfirm: (deckName: string) => void | Promise<void>;
+  onClose: () => void;
+  isDownloading: boolean;
+};
 
 const DeckNameForm = ({
   defaultName,
@@ -49,12 +49,12 @@ const DeckNameForm = ({
   onClose,
   isDownloading,
 }: DeckNameFormProps) => {
-  const [deckName, setDeckName] = useState(defaultName)
+  const [deckName, setDeckName] = useState(defaultName);
 
   const handleConfirm = () => {
-    const trimmed = deckName.trim() || defaultName
-    onConfirm(trimmed)
-  }
+    const trimmed = deckName.trim() || defaultName;
+    onConfirm(trimmed);
+  };
 
   return (
     <>
@@ -88,5 +88,5 @@ const DeckNameForm = ({
         </Button>
       </DialogActions>
     </>
-  )
-}
+  );
+};

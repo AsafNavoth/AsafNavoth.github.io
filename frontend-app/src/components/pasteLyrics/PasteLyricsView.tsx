@@ -1,105 +1,105 @@
-import { Box, TextField, Typography } from '@mui/material'
-import { flexColumnHalf } from '../../utils/commonStyles'
-import { useCallback, useMemo, useState } from 'react'
-import { DeckNameDialog } from '../anki/DeckNameDialog'
-import { AnkiExportButton } from '../anki/AnkiExportButton'
-import { NotesChecklistModal } from '../anki/NotesChecklistModal'
-import { useAnkiConnect } from '../../hooks/useAnkiConnect'
-import { useAnkiExport } from '../../hooks/useAnkiExport'
-import { useAnkiNotes } from '../../hooks/useAnkiNotes'
-import { maxLyricsChars } from '../../env'
+import { Box, TextField, Typography } from '@mui/material';
+import { flexColumnHalf } from '../../utils/commonStyles';
+import { useCallback, useMemo, useState } from 'react';
+import { DeckNameDialog } from '../anki/DeckNameDialog';
+import { AnkiExportButton } from '../anki/AnkiExportButton';
+import { NotesChecklistModal } from '../anki/NotesChecklistModal';
+import { useAnkiConnect } from '../../hooks/useAnkiConnect';
+import { useAnkiExport } from '../../hooks/useAnkiExport';
+import { useAnkiNotes } from '../../hooks/useAnkiNotes';
+import { maxLyricsChars } from '../../env';
 
-const DEFAULT_DECK_NAME = 'Pasted lyrics'
+const DEFAULT_DECK_NAME = 'Pasted lyrics';
 
 type PasteLyricsViewProps = {
-  hideTitle?: boolean
-}
+  hideTitle?: boolean;
+};
 
 export const PasteLyricsView = ({
   hideTitle = false,
 }: PasteLyricsViewProps) => {
-  const [text, setText] = useState('')
-  const trimmedText = text.trim()
+  const [text, setText] = useState('');
+  const trimmedText = text.trim();
 
   const payload = useMemo(() => {
-    if (!trimmedText) return null
+    if (!trimmedText) return null;
 
     return {
       plainLyrics: trimmedText,
       trackName: DEFAULT_DECK_NAME,
       artistName: '',
-    }
-  }, [trimmedText])
+    };
+  }, [trimmedText]);
 
   const {
     fetchNotes,
     abortFetch,
     notesData,
     isLoading: isNotesLoading,
-  } = useAnkiNotes(payload)
-  const { buildDeckBlob, downloadFile, isExporting } = useAnkiExport()
+  } = useAnkiNotes(payload);
+  const { buildDeckBlob, downloadFile, isExporting } = useAnkiExport();
   const {
     addNotesToAnki,
     isAddingToAnki,
     clearError: clearAnkiConnectError,
-  } = useAnkiConnect()
+  } = useAnkiConnect();
 
-  const [notesModalOpen, setNotesModalOpen] = useState(false)
-  const [deckNameDialogOpen, setDeckNameDialogOpen] = useState(false)
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [deckNameDialogOpen, setDeckNameDialogOpen] = useState(false);
   const [pendingDownloadNotes, setPendingDownloadNotes] = useState<
     { fields: Record<string, string> }[] | null
-  >(null)
+  >(null);
 
   const handleExportClick = useCallback(async () => {
-    setNotesModalOpen(true)
-    const result = await fetchNotes()
+    setNotesModalOpen(true);
+    const result = await fetchNotes();
 
-    if (result === null) setNotesModalOpen(false)
-  }, [fetchNotes])
+    if (result === null) setNotesModalOpen(false);
+  }, [fetchNotes]);
 
   const handleDownloadClick = useCallback(
     (selectedNotes: { fields: Record<string, string> }[]) => {
-      setPendingDownloadNotes(selectedNotes)
-      setDeckNameDialogOpen(true)
+      setPendingDownloadNotes(selectedNotes);
+      setDeckNameDialogOpen(true);
     },
     []
-  )
+  );
 
   const handleDeckNameConfirm = useCallback(
     async (deckName: string) => {
-      if (!notesData || !pendingDownloadNotes) return
+      if (!notesData || !pendingDownloadNotes) return;
 
       const blob = await buildDeckBlob({
         deckName,
         modelName: notesData.modelName,
         notes: pendingDownloadNotes,
-      })
+      });
 
       if (blob) {
-        downloadFile(blob, `${deckName.replace(/\//g, '-')}.apkg`)
-        setDeckNameDialogOpen(false)
-        setPendingDownloadNotes(null)
-        setNotesModalOpen(false)
+        downloadFile(blob, `${deckName.replace(/\//g, '-')}.apkg`);
+        setDeckNameDialogOpen(false);
+        setPendingDownloadNotes(null);
+        setNotesModalOpen(false);
       }
     },
     [notesData, pendingDownloadNotes, buildDeckBlob, downloadFile]
-  )
+  );
 
   const handleAddToDeck = useCallback(
     async (
       selectedNotes: { fields: Record<string, string> }[],
       deckName: string
     ) => {
-      if (!notesData) return
-      await addNotesToAnki(deckName, selectedNotes, notesData.modelName)
-      setNotesModalOpen(false)
+      if (!notesData) return;
+      await addNotesToAnki(deckName, selectedNotes, notesData.modelName);
+      setNotesModalOpen(false);
     },
     [addNotesToAnki, notesData]
-  )
+  );
 
-  const charCount = text.length
-  const isTooLong = charCount > maxLyricsChars
-  const canExport = trimmedText.length > 0 && !isTooLong
+  const charCount = text.length;
+  const isTooLong = charCount > maxLyricsChars;
+  const canExport = trimmedText.length > 0 && !isTooLong;
 
   return (
     <Box sx={flexColumnHalf}>
@@ -149,9 +149,9 @@ export const PasteLyricsView = ({
       <NotesChecklistModal
         open={notesModalOpen}
         onClose={() => {
-          abortFetch()
-          setNotesModalOpen(false)
-          clearAnkiConnectError()
+          abortFetch();
+          setNotesModalOpen(false);
+          clearAnkiConnectError();
         }}
         notesData={notesData}
         isLoading={isNotesLoading}
@@ -164,12 +164,12 @@ export const PasteLyricsView = ({
         open={deckNameDialogOpen}
         defaultName={DEFAULT_DECK_NAME}
         onClose={() => {
-          setDeckNameDialogOpen(false)
-          setPendingDownloadNotes(null)
+          setDeckNameDialogOpen(false);
+          setPendingDownloadNotes(null);
         }}
         onConfirm={handleDeckNameConfirm}
         isDownloading={isExporting}
       />
     </Box>
-  )
-}
+  );
+};

@@ -1,22 +1,18 @@
-import { Box, Button, CircularProgress, styled } from '@mui/material'
-import { getFlexRowWrapStyle } from '../../utils/commonStyles'
-
-const AnkiExportButtonRoot = styled(Box)(({ theme }) =>
-  getFlexRowWrapStyle({ theme })
-)
+import { Box, Button, CircularProgress } from '@mui/material';
+import { getFlexRowWrapStyle } from '../../utils/commonStyles';
 
 type AnkiExportButtonProps = {
-  disabled?: boolean
-  isLoading?: boolean
-  onExport: () => void
-}
+  disabled?: boolean;
+  isLoading?: boolean;
+  onExport: () => void;
+};
 
 export const AnkiExportButton = ({
   disabled = false,
   isLoading = false,
   onExport,
 }: AnkiExportButtonProps) => (
-  <AnkiExportButtonRoot>
+  <Box sx={(theme) => getFlexRowWrapStyle({ theme })}>
     <Button
       variant="contained"
       size="medium"
@@ -28,5 +24,5 @@ export const AnkiExportButton = ({
     >
       {isLoading ? 'Loading…' : 'Export'}
     </Button>
-  </AnkiExportButtonRoot>
-)
+  </Box>
+);

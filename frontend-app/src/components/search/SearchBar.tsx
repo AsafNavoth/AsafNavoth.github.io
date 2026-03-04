@@ -1,15 +1,15 @@
-import { Box, TextField, Button, styled } from '@mui/material'
-import { getFlexRowCenterStyle } from '../../utils/commonStyles'
+import { Box, TextField, Button, styled } from '@mui/material';
+import { getFlexRowCenterStyle } from '../../utils/commonStyles';
 
 const SearchBarRoot = styled(Box)(({ theme }) =>
   getFlexRowCenterStyle({ theme, gap: 1 })
-)
+);
 
 type SearchBarProps = {
-  value: string
-  onChange: (value: string) => void
-  onSearch: () => void
-}
+  value: string;
+  onChange: (value: string) => void;
+  onSearch: () => void;
+};
 
 export const SearchBar = ({ value, onChange, onSearch }: SearchBarProps) => (
   <SearchBarRoot>
@@ -25,4 +25,4 @@ export const SearchBar = ({ value, onChange, onSearch }: SearchBarProps) => (
       Search
     </Button>
   </SearchBarRoot>
-)
+);

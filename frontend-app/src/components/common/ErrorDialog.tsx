@@ -5,13 +5,13 @@ import {
   DialogActions,
   Button,
   Typography,
-} from '@mui/material'
+} from '@mui/material';
 
 type ErrorDialogProps = {
-  open: boolean
-  message: string
-  onClose: () => void
-}
+  open: boolean;
+  message: string;
+  onClose: () => void;
+};
 
 export const ErrorDialog = ({ open, message, onClose }: ErrorDialogProps) => (
   <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -25,4 +25,4 @@ export const ErrorDialog = ({ open, message, onClose }: ErrorDialogProps) => (
       </Button>
     </DialogActions>
   </Dialog>
-)
+);

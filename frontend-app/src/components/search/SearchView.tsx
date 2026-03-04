@@ -1,26 +1,26 @@
-import { useState } from 'react'
-import { Box, Typography } from '@mui/material'
-import { flexColumnHalf } from '../../utils/commonStyles'
-import { useSnackbar } from '../../contexts/snackbar/snackbarContext'
-import { useReactQuery } from '../../hooks/useReactQuery'
-import type { LrclibSearchResult } from '../../types/lrclib'
-import { SearchBar } from './SearchBar'
-import { SearchResultsList } from './SearchResultsList'
-import { SearchResultsSkeleton } from '../common/LoadingSkeletons'
-import { LyricsModal } from '../lyrics/LyricsModal'
-import { SEARCH_API_PATH } from '../../utils/apiUtils'
+import { useState } from 'react';
+import { Box, Typography } from '@mui/material';
+import { flexColumnHalf } from '../../utils/commonStyles';
+import { useSnackbar } from '../../contexts/snackbar/snackbarContext';
+import { useReactQuery } from '../../hooks/useReactQuery';
+import type { LrclibSearchResult } from '../../types/lrclib';
+import { SearchBar } from './SearchBar';
+import { SearchResultsList } from './SearchResultsList';
+import { SearchResultsSkeleton } from '../common/LoadingSkeletons';
+import { LyricsModal } from '../lyrics/LyricsModal';
+import { SEARCH_API_PATH } from '../../utils/apiUtils';
 
 type SearchViewProps = {
-  hideTitle?: boolean
-}
+  hideTitle?: boolean;
+};
 
 export const SearchView = ({ hideTitle = false }: SearchViewProps) => {
-  const { enqueueErrorSnackbar } = useSnackbar()
-  const [searchInput, setSearchInput] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
+  const { enqueueErrorSnackbar } = useSnackbar();
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTrack, setSelectedTrack] = useState<LrclibSearchResult | null>(
     null
-  )
+  );
 
   const lyricsModalProps = selectedTrack
     ? {
@@ -36,13 +36,13 @@ export const SearchView = ({ hideTitle = false }: SearchViewProps) => {
         trackName: '',
         artistName: '',
         albumName: '',
-      }
+      };
 
   const handleSearch = () => {
-    const trimmed = searchInput.trim()
+    const trimmed = searchInput.trim();
 
-    if (trimmed) setSearchQuery(trimmed)
-  }
+    if (trimmed) setSearchQuery(trimmed);
+  };
 
   const { data, isLoading } = useReactQuery<LrclibSearchResult[]>({
     queryKey: ['lyricsSearch', searchQuery],
@@ -50,15 +50,15 @@ export const SearchView = ({ hideTitle = false }: SearchViewProps) => {
     config: { params: { q: searchQuery } },
     enabled: !!searchQuery,
     throwOnError: (error) => {
-      enqueueErrorSnackbar(error, 'Search failed')
+      enqueueErrorSnackbar(error, 'Search failed');
 
-      return false
+      return false;
     },
-  })
+  });
 
-  const showEmptyState = data && data.length === 0 && searchQuery && !isLoading
+  const showEmptyState = data && data.length === 0 && searchQuery && !isLoading;
 
-  const showSearchResults = data && data.length > 0
+  const showSearchResults = data && data.length > 0;
 
   return (
     <Box sx={flexColumnHalf}>
@@ -87,5 +87,5 @@ export const SearchView = ({ hideTitle = false }: SearchViewProps) => {
         <Typography color="text.secondary">No results found</Typography>
       )}
     </Box>
-  )
-}
+  );
+};

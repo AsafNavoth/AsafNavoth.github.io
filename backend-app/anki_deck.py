@@ -19,13 +19,13 @@ DECK_ID = 2059400111
 
 MAX_DEFINITIONS = 5
 
-# Model/field names (must match frontend)
+# Model/field names for Anki cards
 ANKI_MODEL_NAME = "Lyrics Vocabulary"
 FIELD_WORD = "Word"
 FIELD_SENTENCE = "Sentence"
 FIELD_WORD_MEANING = "Word Meaning"
 
-# Error messages (used in routes for response handling)
+# Error messages
 ERROR_NO_VOCABULARY_CARDS = "No vocabulary cards could be generated from the lyrics"
 ERROR_NO_DEFINITIONS = "No definitions found for any word in the lyrics"
 NO_DEFINITION_FOUND = "No definition found"
@@ -52,9 +52,15 @@ def _format_jamdict_result(result: dict) -> str:
     # Word entries (JMdict)
     for entry in result.get("entries", []):
         kanji_texts = [
-            k.get("text", "") for k in entry.get("kanji", []) if k.get("text")
+            kanji_item.get("text", "")
+            for kanji_item in entry.get("kanji", [])
+            if kanji_item.get("text")
         ]
-        kana_texts = [k.get("text", "") for k in entry.get("kana", []) if k.get("text")]
+        kana_texts = [
+            kana_item.get("text", "")
+            for kana_item in entry.get("kana", [])
+            if kana_item.get("text")
+        ]
         headword = " ".join(kanji_texts) if kanji_texts else " ".join(kana_texts)
         if kana_texts and kanji_texts and kana_texts != kanji_texts:
             headword = f"{' '.join(kanji_texts)} ({' '.join(kana_texts)})"
@@ -63,9 +69,9 @@ def _format_jamdict_result(result: dict) -> str:
 
         glosses = []
         for sense in entry.get("senses", []):
-            for g in sense.get("SenseGloss", []):
-                text = g.get("text", "")
-                if text and (not g.get("lang") or g.get("lang") == "eng"):
+            for gloss in sense.get("SenseGloss", []):
+                text = gloss.get("text", "")
+                if text and (not gloss.get("lang") or gloss.get("lang") == "eng"):
                     glosses.append(html.escape(text))
                     if len(glosses) >= MAX_DEFINITIONS:
                         break
@@ -80,15 +86,21 @@ def _format_jamdict_result(result: dict) -> str:
     # Named entities (JMnedict)
     for entry in result.get("names", []):
         kanji_texts = [
-            k.get("text", "") for k in entry.get("kanji", []) if k.get("text")
+            kanji_item.get("text", "")
+            for kanji_item in entry.get("kanji", [])
+            if kanji_item.get("text")
         ]
-        kana_texts = [k.get("text", "") for k in entry.get("kana", []) if k.get("text")]
+        kana_texts = [
+            kana_item.get("text", "")
+            for kana_item in entry.get("kana", [])
+            if kana_item.get("text")
+        ]
         headword = " ".join(kanji_texts or kana_texts)
 
         glosses = []
         for sense in entry.get("senses", []):
-            for g in sense.get("SenseGloss", []):
-                text = g.get("text", "")
+            for gloss in sense.get("SenseGloss", []):
+                text = gloss.get("text", "")
                 if text:
                     glosses.append(html.escape(text))
                     if len(glosses) >= MAX_DEFINITIONS:
@@ -107,7 +119,7 @@ def _format_jamdict_result(result: dict) -> str:
         meanings = char.get("meanings", [])[:MAX_DEFINITIONS]
         if literal and meanings:
             parts.append(
-                f'<div class="char"><b>{html.escape(literal)}</b> (kanji): {"; ".join(html.escape(m) for m in meanings)}</div>'
+                f'<div class="char"><b>{html.escape(literal)}</b> (kanji): {"; ".join(html.escape(meaning) for meaning in meanings)}</div>'
             )
 
     if not parts:
@@ -150,21 +162,27 @@ def get_anki_model_config() -> dict:
     }
 
 
+_anki_model_cache: genanki.Model | None = None
+
+
 def _get_anki_model() -> genanki.Model:
-    """Return the note model for lyrics vocabulary cards."""
-    return genanki.Model(
-        MODEL_ID,
-        ANKI_MODEL_NAME,
-        fields=[
-            {"name": FIELD_WORD},
-            {"name": FIELD_SENTENCE},
-            {"name": FIELD_WORD_MEANING},
-        ],
-        templates=[
-            {"name": "Card 1", "qfmt": FRONT_TEMPLATE, "afmt": BACK_TEMPLATE},
-        ],
-        css=CARD_CSS,
-    )
+    """Return the note model for lyrics vocabulary cards (cached)."""
+    global _anki_model_cache
+    if _anki_model_cache is None:
+        _anki_model_cache = genanki.Model(
+            MODEL_ID,
+            ANKI_MODEL_NAME,
+            fields=[
+                {"name": FIELD_WORD},
+                {"name": FIELD_SENTENCE},
+                {"name": FIELD_WORD_MEANING},
+            ],
+            templates=[
+                {"name": "Card 1", "qfmt": FRONT_TEMPLATE, "afmt": BACK_TEMPLATE},
+            ],
+            css=CARD_CSS,
+        )
+    return _anki_model_cache
 
 
 def _build_notes_from_tokenized(
@@ -185,7 +203,8 @@ def build_anki_deck(
     tokenized_lyrics: list[tuple[str, str, dict]],
     deck_name: str | None = None,
 ) -> bytes:
-    """Build an Anki deck from tokenized lyrics. Each item is (word, sentence, result). Returns .apkg file bytes."""
+    """Build an Anki deck from tokenized lyrics.
+    Each item is (word, sentence, result). Returns .apkg file bytes."""
     deck_name = deck_name or ANKI_MODEL_NAME
     if not tokenized_lyrics:
         raise NoVocabularyCardsError()
@@ -208,8 +227,8 @@ def build_anki_deck(
         tmp_path = tmp.name
     try:
         package.write_to_file(tmp_path)
-        with open(tmp_path, "rb") as f:
-            apkg_bytes = f.read()
+        with open(tmp_path, "rb") as deck_file:
+            apkg_bytes = deck_file.read()
         return apkg_bytes
     finally:
         os.unlink(tmp_path)
@@ -263,8 +282,8 @@ def build_anki_deck_from_notes(
         tmp_path = tmp.name
     try:
         package.write_to_file(tmp_path)
-        with open(tmp_path, "rb") as f:
-            apkg_bytes = f.read()
+        with open(tmp_path, "rb") as deck_file:
+            apkg_bytes = deck_file.read()
         return apkg_bytes
     finally:
         os.unlink(tmp_path)

@@ -1,6 +1,6 @@
 from flask import Blueprint, Response, jsonify, request
 import requests
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, RequestException
 
 from anki_deck import (
     NoDefinitionsError,
@@ -34,7 +34,8 @@ def _validate_lyrics_request(lyrics_data):
 
 
 def _handle_anki_errors(exception):
-    """Handle JamdictNotAvailableError, NoVocabularyCardsError, NoDefinitionsError. Returns (response, status) or None."""
+    """Handle JamdictNotAvailableError, NoVocabularyCardsError, NoDefinitionsError.
+    Returns (response, status) or None."""
     if isinstance(exception, JamdictNotAvailableError):
         return jsonify({'error': str(exception)}), 503
     if isinstance(exception, (NoVocabularyCardsError, NoDefinitionsError)):
@@ -43,19 +44,24 @@ def _handle_anki_errors(exception):
 
 
 @lyrics_bp.route('/lyrics/<int:lyrics_id>')
+@log_route
 def get_lyrics(lyrics_id):
-    lrclib_response = requests.get(
-        f'{LRCLIB_BASE_URL}/api/get/{lyrics_id}',
-        timeout=10,
-    )
-
+    """Fetch lyrics from Lrclib by ID. Returns track metadata and lyrics (plain or synced)."""
     try:
+        lrclib_response = requests.get(
+            f'{LRCLIB_BASE_URL}/api/get/{lyrics_id}',
+            timeout=10,
+        )
         lrclib_response.raise_for_status()
+        data = lrclib_response.json()
+        return jsonify(data)
     except HTTPError:
         return jsonify(lrclib_response.json()), lrclib_response.status_code
-
-    data = lrclib_response.json()
-    return jsonify(data)
+    except RequestException as e:
+        return (
+            jsonify({'error': 'Failed to reach lyrics service', 'detail': str(e)}),
+            502,
+        )
 
 
 @lyrics_bp.route('/lyrics/anki/deck', methods=['POST'])
@@ -72,7 +78,7 @@ def export_anki_deck():
             ),
             400,
         )
-    deck_name = data.get('deckName') or data.get('deck')
+    deck_name = data.get('deckName')
     notes = data.get('notes')
     if not deck_name:
         return jsonify({'error': 'deckName is required'}), 400
@@ -92,6 +98,7 @@ def export_anki_deck():
 
 
 @lyrics_bp.route('/lyrics/anki/model-config')
+@log_route
 def get_anki_model_config_route():
     """Return Anki model config (modelName, fields, templates, css). Single source of truth."""
     return jsonify(get_anki_model_config())

@@ -1,78 +1,81 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import axios from 'axios'
-import { useSnackbar } from '../contexts/snackbar/snackbarContext'
-import { useApi } from './useApi'
-import { getApiErrorMessage, LYRICS_ANKI_NOTES_API_PATH } from '../utils/apiUtils'
+import { useCallback, useEffect, useRef, useState } from 'react';
+import axios from 'axios';
+import { useSnackbar } from '../contexts/snackbar/snackbarContext';
+import { useApi } from './useApi';
+import {
+  getApiErrorMessage,
+  LYRICS_ANKI_NOTES_API_PATH,
+} from '../utils/apiUtils';
 
-export type AnkiNote = { fields: Record<string, string> }
+export type AnkiNote = { fields: Record<string, string> };
 
 export type AnkiNotesData = {
-  deckName: string
-  modelName: string
-  notes: AnkiNote[]
-}
+  deckName: string;
+  modelName: string;
+  notes: AnkiNote[];
+};
 
-type AnkiNotesPayload = Record<string, unknown>
+type AnkiNotesPayload = Record<string, unknown>;
 
 export const useAnkiNotes = (payload: AnkiNotesPayload | null) => {
-  const api = useApi()
-  const { enqueueErrorSnackbar } = useSnackbar()
-  const abortRef = useRef<AbortController | null>(null)
-  const [notesData, setNotesData] = useState<AnkiNotesData | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const api = useApi();
+  const { enqueueErrorSnackbar } = useSnackbar();
+  const abortRef = useRef<AbortController | null>(null);
+  const [notesData, setNotesData] = useState<AnkiNotesData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const abortFetch = useCallback(() => {
-    abortRef.current?.abort()
-    abortRef.current = null
-    setNotesData(null)
-    setIsLoading(false)
-    setError(null)
-  }, [])
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setNotesData(null);
+    setIsLoading(false);
+    setError(null);
+  }, []);
 
   useEffect(() => {
-    abortFetch()
-  }, [payload, abortFetch])
+    abortFetch();
+  }, [payload, abortFetch]);
 
   const fetchNotes = useCallback(async (): Promise<AnkiNotesData | null> => {
-    if (!payload) return null
+    if (!payload) return null;
 
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    setError(null)
-    setNotesData(null)
-    setIsLoading(true)
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setError(null);
+    setNotesData(null);
+    setIsLoading(true);
 
-    const isStale = () => abortRef.current !== controller
+    const isStale = () => abortRef.current !== controller;
 
     try {
       const { data } = await api.post<AnkiNotesData>(
         LYRICS_ANKI_NOTES_API_PATH,
         payload,
         { signal: controller.signal }
-      )
+      );
 
-      if (isStale()) return null
+      if (isStale()) return null;
 
-      setNotesData(data)
+      setNotesData(data);
 
-      return data
+      return data;
     } catch (error: unknown) {
-      const silentFailure = axios.isCancel(error) || isStale()
+      const silentFailure = axios.isCancel(error) || isStale();
 
-      if (silentFailure) return null
+      if (silentFailure) return null;
 
-      const message = await getApiErrorMessage(error, 'Failed to fetch notes')
-      setError(message)
-      enqueueErrorSnackbar(message)
+      const message = await getApiErrorMessage(error, 'Failed to fetch notes');
+      setError(message);
+      enqueueErrorSnackbar(message);
 
-      return null
+      return null;
     } finally {
-      if (abortRef.current === controller) abortRef.current = null
-      setIsLoading(false)
+      if (abortRef.current === controller) abortRef.current = null;
+      setIsLoading(false);
     }
-  }, [payload, api, enqueueErrorSnackbar])
+  }, [payload, api, enqueueErrorSnackbar]);
 
   return {
     fetchNotes,
@@ -80,5 +83,5 @@ export const useAnkiNotes = (payload: AnkiNotesPayload | null) => {
     notesData,
     isLoading,
     error,
-  }
-}
+  };
+};

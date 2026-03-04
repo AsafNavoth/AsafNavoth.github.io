@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -6,34 +6,34 @@ import {
   Typography,
   Box,
   styled,
-} from '@mui/material'
-import { useReactQuery } from '../../hooks/useReactQuery'
-import { useSnackbar } from '../../contexts/snackbar/snackbarContext'
-import { useAnkiConnect } from '../../hooks/useAnkiConnect'
-import { useAnkiExport } from '../../hooks/useAnkiExport'
-import { useAnkiNotes } from '../../hooks/useAnkiNotes'
-import type { LrclibLyricsDetails } from '../../types/lrclib'
-import { DeckNameDialog } from '../anki/DeckNameDialog'
-import { LyricsSkeleton } from '../common/LoadingSkeletons'
-import { AnkiExportButton } from '../anki/AnkiExportButton'
-import { NotesChecklistModal } from '../anki/NotesChecklistModal'
-import { getFlexRowCenterStyle } from '../../utils/commonStyles'
-import { LYRICS_API_PATH } from '../../utils/apiUtils'
+} from '@mui/material';
+import { useReactQuery } from '../../hooks/useReactQuery';
+import { useSnackbar } from '../../contexts/snackbar/snackbarContext';
+import { useAnkiConnect } from '../../hooks/useAnkiConnect';
+import { useAnkiExport } from '../../hooks/useAnkiExport';
+import { useAnkiNotes } from '../../hooks/useAnkiNotes';
+import type { LrclibLyricsDetails } from '../../types/lrclib';
+import { DeckNameDialog } from '../anki/DeckNameDialog';
+import { LyricsSkeleton } from '../common/LoadingSkeletons';
+import { AnkiExportButton } from '../anki/AnkiExportButton';
+import { NotesChecklistModal } from '../anki/NotesChecklistModal';
+import { getFlexRowCenterStyle } from '../../utils/commonStyles';
+import { LYRICS_API_PATH } from '../../utils/apiUtils';
 
 type LyricsModalProps = {
-  open: boolean
-  lyricsId: number | null
-  trackName: string
-  artistName: string
-  albumName: string
-  onClose: () => void
-}
+  open: boolean;
+  lyricsId: number | null;
+  trackName: string;
+  artistName: string;
+  albumName: string;
+  onClose: () => void;
+};
 
 const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
   ...getFlexRowCenterStyle({ theme, gap: 1 }),
   justifyContent: 'space-between',
   flexWrap: 'wrap',
-}))
+}));
 
 const titleTypographySx = {
   flex: 1,
@@ -41,13 +41,13 @@ const titleTypographySx = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-} as const
+} as const;
 
 const lyricsTextSx = {
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
   fontFamily: 'inherit',
-} as const
+} as const;
 
 export const LyricsModal = ({
   open,
@@ -57,89 +57,89 @@ export const LyricsModal = ({
   albumName,
   onClose,
 }: LyricsModalProps) => {
-  const { enqueueErrorSnackbar } = useSnackbar()
+  const { enqueueErrorSnackbar } = useSnackbar();
   const { data, isLoading } = useReactQuery<LrclibLyricsDetails>({
     queryKey: ['lyricsDetails', lyricsId],
     url: `${LYRICS_API_PATH}/${lyricsId}`,
     enabled: open && lyricsId !== null,
     throwOnError: (error) => {
-      enqueueErrorSnackbar(error, 'Failed to load lyrics')
+      enqueueErrorSnackbar(error, 'Failed to load lyrics');
 
-      return false
+      return false;
     },
-  })
+  });
 
-  const lyricsToShow = data?.plainLyrics ?? data?.syncedLyrics ?? ''
-  const payload = data ?? null
+  const lyricsToShow = data?.plainLyrics ?? data?.syncedLyrics ?? '';
+  const payload = data ?? null;
 
   const {
     fetchNotes,
     abortFetch,
     notesData,
     isLoading: isNotesLoading,
-  } = useAnkiNotes(payload)
-  const { buildDeckBlob, downloadFile, isExporting } = useAnkiExport()
+  } = useAnkiNotes(payload);
+  const { buildDeckBlob, downloadFile, isExporting } = useAnkiExport();
   const {
     addNotesToAnki,
     isAddingToAnki,
     clearError: clearAnkiConnectError,
-  } = useAnkiConnect()
+  } = useAnkiConnect();
 
-  const [notesModalOpen, setNotesModalOpen] = useState(false)
-  const [deckNameDialogOpen, setDeckNameDialogOpen] = useState(false)
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [deckNameDialogOpen, setDeckNameDialogOpen] = useState(false);
   const [pendingDownloadNotes, setPendingDownloadNotes] = useState<
     { fields: Record<string, string> }[] | null
-  >(null)
+  >(null);
 
   const handleExportClick = useCallback(async () => {
-    setNotesModalOpen(true)
-    const result = await fetchNotes()
+    setNotesModalOpen(true);
+    const result = await fetchNotes();
 
-    if (result === null) setNotesModalOpen(false)
-  }, [fetchNotes])
+    if (result === null) setNotesModalOpen(false);
+  }, [fetchNotes]);
 
   const handleDownloadClick = useCallback(
     (selectedNotes: { fields: Record<string, string> }[]) => {
-      setPendingDownloadNotes(selectedNotes)
-      setDeckNameDialogOpen(true)
+      setPendingDownloadNotes(selectedNotes);
+      setDeckNameDialogOpen(true);
     },
     []
-  )
+  );
 
   const handleDeckNameConfirm = useCallback(
     async (deckName: string) => {
-      if (!notesData || !pendingDownloadNotes) return
+      if (!notesData || !pendingDownloadNotes) return;
       const blob = await buildDeckBlob({
         deckName,
         modelName: notesData.modelName,
         notes: pendingDownloadNotes,
-      })
+      });
 
       if (blob) {
-        downloadFile(blob, `${deckName.replace(/\//g, '-')}.apkg`)
-        setDeckNameDialogOpen(false)
-        setPendingDownloadNotes(null)
-        setNotesModalOpen(false)
+        downloadFile(blob, `${deckName.replace(/\//g, '-')}.apkg`);
+        setDeckNameDialogOpen(false);
+        setPendingDownloadNotes(null);
+        setNotesModalOpen(false);
       }
     },
     [notesData, pendingDownloadNotes, buildDeckBlob, downloadFile]
-  )
+  );
 
   const handleAddToDeck = useCallback(
     async (
       selectedNotes: { fields: Record<string, string> }[],
       deckName: string
     ) => {
-      if (!notesData) return
-      await addNotesToAnki(deckName, selectedNotes, notesData.modelName)
-      setNotesModalOpen(false)
+      if (!notesData) return;
+      await addNotesToAnki(deckName, selectedNotes, notesData.modelName);
+      setNotesModalOpen(false);
     },
     [addNotesToAnki, notesData]
-  )
+  );
 
   const dialogTitle = [trackName, artistName, albumName]
     .filter(Boolean)
-    .join(' - ')
+    .join(' - ');
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -172,9 +172,9 @@ export const LyricsModal = ({
         <NotesChecklistModal
           open={notesModalOpen}
           onClose={() => {
-            abortFetch()
-            setNotesModalOpen(false)
-            clearAnkiConnectError()
+            abortFetch();
+            setNotesModalOpen(false);
+            clearAnkiConnectError();
           }}
           notesData={notesData}
           isLoading={isNotesLoading}
@@ -187,13 +187,13 @@ export const LyricsModal = ({
           open={deckNameDialogOpen}
           defaultName={trackName}
           onClose={() => {
-            setDeckNameDialogOpen(false)
-            setPendingDownloadNotes(null)
+            setDeckNameDialogOpen(false);
+            setPendingDownloadNotes(null);
           }}
           onConfirm={handleDeckNameConfirm}
           isDownloading={isExporting}
         />
       </DialogContent>
     </Dialog>
-  )
-}
+  );
+};

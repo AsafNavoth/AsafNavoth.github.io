@@ -7,17 +7,17 @@ import {
   Select,
   Switch,
   styled,
-} from '@mui/material'
-import { useThemeMode } from '../../contexts/theme/themeContext'
-import { useAnkiConnectContext } from '../../contexts/ankiconnect/ankiconnectContext'
-import { getFlexRowWrapStyle, getOnHoverStyle } from '../../utils/commonStyles'
+} from '@mui/material';
+import { useThemeMode } from '../../contexts/theme/themeContext';
+import { useAnkiConnectContext } from '../../contexts/ankiconnect/ankiconnectContext';
+import { getFlexRowWrapStyle, getOnHoverStyle } from '../../utils/commonStyles';
 
 const DeckFormControl = styled(FormControl)(({ theme }) => ({
   width: 'min(25ch, 31vw)',
   [theme.breakpoints.down('sm')]: {
     width: 'min(20ch, 28vw)',
   },
-}))
+}));
 
 const getDeckMenuItems = (decks: string[] | null) =>
   (decks ?? []).map((deck) => (
@@ -28,10 +28,10 @@ const getDeckMenuItems = (decks: string[] | null) =>
     >
       {deck}
     </MenuItem>
-  ))
+  ));
 
 export const AnkiConnectBar = () => {
-  const { isMobile } = useThemeMode()
+  const { isMobile } = useThemeMode();
   const {
     ankiConnectEnabled,
     setAnkiConnectEnabled,
@@ -39,10 +39,10 @@ export const AnkiConnectBar = () => {
     setSelectedDeck,
     decks,
     refreshDecks,
-  } = useAnkiConnectContext()
+  } = useAnkiConnectContext();
 
   const isDropdownDisabled =
-    !ankiConnectEnabled || decks === null || decks.length === 0
+    !ankiConnectEnabled || decks === null || decks.length === 0;
 
   return (
     <Box
@@ -79,5 +79,5 @@ export const AnkiConnectBar = () => {
         </Select>
       </DeckFormControl>
     </Box>
-  )
-}
+  );
+};

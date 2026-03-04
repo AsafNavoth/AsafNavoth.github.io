@@ -32,6 +32,7 @@ _jamdict_local = threading.local()
 
 
 def _get_tokenizer():
+    """Return the Sudachi tokenizer instance, creating it lazily on first use."""
     global _tokenizer
     if _tokenizer is None:
         _tokenizer = Dictionary().create()
@@ -39,6 +40,7 @@ def _get_tokenizer():
 
 
 def _get_jamdict():
+    """Return thread-local Jamdict instance, creating it lazily. None if DB unavailable."""
     jam = getattr(_jamdict_local, 'jam', None)
     failed = getattr(_jamdict_local, 'failed', False)
     if jam is not None:
@@ -72,14 +74,17 @@ def _lookup_word(jam, word: str) -> dict:
 def _lookup_result_to_dict(result) -> dict:
     """Convert jamdict LookupResult to a JSON-serializable dict."""
     data = {
-        'entries': [e.to_dict() for e in result.entries],
-        'names': [n.to_dict() for n in result.names] if result.names else [],
+        'entries': [entry.to_dict() for entry in result.entries],
+        'names': [name.to_dict() for name in result.names] if result.names else [],
         'found': len(result.entries) > 0 or (result.names and len(result.names) > 0),
     }
     if result.chars:
         data['chars'] = [
-            {'literal': getattr(c, 'literal', str(c)), 'meanings': c.meanings()}
-            for c in result.chars
+            {
+                'literal': getattr(char_entry, 'literal', str(char_entry)),
+                'meanings': char_entry.meanings(),
+            }
+            for char_entry in result.chars
         ]
     else:
         data['chars'] = []
@@ -130,7 +135,7 @@ _JAPANESE_CHAR_PATTERN = re.compile(
 def remove_non_japanese_chars(text: str) -> str:
     """Remove all non-Japanese characters and normalize whitespace.
     Keeps Hiragana, Katakana, Kanji, CJK punctuation, and whitespace."""
-    cleaned = ''.join(c for c in text if _JAPANESE_CHAR_PATTERN.match(c))
+    cleaned = ''.join(char for char in text if _JAPANESE_CHAR_PATTERN.match(char))
     return re.sub(r'\s+', ' ', cleaned).strip()
 
 
@@ -169,7 +174,7 @@ def get_sentence_for_word(
     raw_lines = lyrics_text.splitlines()
     lines = [line.strip() for line in raw_lines if line.strip()]
     if not lines:
-        lines = [p.strip() for p in lyrics_text.split() if p.strip()]
+        lines = [phrase.strip() for phrase in lyrics_text.split() if phrase.strip()]
     if not lines:
         lines = [lyrics_text.strip()] if lyrics_text.strip() else []
 
@@ -177,18 +182,18 @@ def get_sentence_for_word(
     if surface_forms:
         candidates = list(dict.fromkeys(surface_forms + candidates))
     for line in lines:
-        for c in candidates:
-            if c and c in line:
-                truncated = _truncate_around_match(line, c)
+        for candidate in candidates:
+            if candidate and candidate in line:
+                truncated = _truncate_around_match(line, candidate)
                 escaped = html.escape(truncated)
-                escaped_match = html.escape(c)
+                escaped_match = html.escape(candidate)
                 return escaped.replace(escaped_match, f'<b>{escaped_match}</b>', 1)
     return ''
 
 
-def _contains_kanji(s: str) -> bool:
+def _contains_kanji(text: str) -> bool:
     """Return True if string contains any CJK ideograph (kanji)."""
-    return any('\u4e00' <= c <= '\u9fff' for c in s)
+    return any('\u4e00' <= char <= '\u9fff' for char in text)
 
 
 def _should_keep_token(token: str) -> bool:
@@ -196,11 +201,10 @@ def _should_keep_token(token: str) -> bool:
     if not token:
         return False
 
-    # Filter tokens that are only punctuation
-    if all(unicodedata.category(c).startswith('P') for c in token):
-        return False
-
     if len(token) > 1:
+        # Multi-char tokens: keep unless all punctuation
+        if all(unicodedata.category(char).startswith('P') for char in token):
+            return False
         return True
 
     char = token[0]
@@ -234,18 +238,22 @@ def _tokenize_lyrics_impl(text: str) -> list[tuple[str, dict, list[str]]]:
     morphemes = tokenizer.tokenize(text, SplitMode.A)
     # Build dict_form -> [surface_forms] for sentence matching (handles conjugation)
     dict_to_surfaces: dict[str, list[str]] = {}
-    for m in morphemes:
-        surf = m.surface().strip()
+    for morpheme in morphemes:
+        surface_form = morpheme.surface().strip()
         # Use normalized_form for kanji words (modern 信じる); dictionary_form for hiragana-only
         # to avoid adding kanji that wasn't in the text (e.g. わたし stays as dictionary form).
-        surf_has_kanji = _contains_kanji(surf)
-        dform = (
-            m.normalized_form()
-            if (USE_NORMALIZED_FORM and surf_has_kanji)
-            else m.dictionary_form()
+        surface_has_kanji = _contains_kanji(surface_form)
+        dict_form = (
+            morpheme.normalized_form()
+            if (USE_NORMALIZED_FORM and surface_has_kanji)
+            else morpheme.dictionary_form()
         )
-        if surf and _should_keep_token(surf) and _should_keep_token(dform):
-            dict_to_surfaces.setdefault(dform, []).append(surf)
+        if (
+            surface_form
+            and _should_keep_token(surface_form)
+            and _should_keep_token(dict_form)
+        ):
+            dict_to_surfaces.setdefault(dict_form, []).append(surface_form)
     unique_words = list(dict_to_surfaces.keys())
 
     if jam is None and unique_words:
@@ -260,7 +268,9 @@ def _tokenize_lyrics_impl(text: str) -> list[tuple[str, dict, list[str]]]:
     tokenized = [
         (word, _lookup_word(jam, word), dict_to_surfaces[word]) for word in unique_words
     ]
-    found_count = sum(1 for _, r, _ in tokenized if r.get('found'))
+    found_count = sum(
+        1 for _word, lookup_result, _surfaces in tokenized if lookup_result.get('found')
+    )
 
     # If all lookups returned empty, jamdict may be corrupted. Retry with a fresh instance.
     if found_count == 0 and len(tokenized) > 0:
@@ -274,7 +284,11 @@ def _tokenize_lyrics_impl(text: str) -> list[tuple[str, dict, list[str]]]:
                 (word, _lookup_word(jam, word), dict_to_surfaces[word])
                 for word in unique_words
             ]
-            found_count = sum(1 for _, r, _ in tokenized if r.get('found'))
+            found_count = sum(
+                1
+                for _word, lookup_result, _surfaces in tokenized
+                if lookup_result.get('found')
+            )
     return tokenized
 
 

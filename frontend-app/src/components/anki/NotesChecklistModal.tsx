@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from 'react'
+import { useCallback, useState, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -14,39 +14,39 @@ import {
   Typography,
   Box,
   styled,
-} from '@mui/material'
-import { NotesChecklistSkeleton } from '../common/LoadingSkeletons'
+} from '@mui/material';
+import { NotesChecklistSkeleton } from '../common/LoadingSkeletons';
 import {
   getTextWithoutHtml,
   getTruncatedText,
-} from '../../utils/commonStringUtils'
-import { useAnkiConnectContext } from '../../contexts/ankiconnect/ankiconnectContext'
+} from '../../utils/commonStringUtils';
+import { useAnkiConnectContext } from '../../contexts/ankiconnect/ankiconnectContext';
 import {
   getBorderedListStyle,
   getFlexRowCenterStyle,
-} from '../../utils/commonStyles'
-import type { AnkiNote, AnkiNotesData } from '../../hooks/useAnkiNotes'
+} from '../../utils/commonStyles';
+import type { AnkiNote, AnkiNotesData } from '../../hooks/useAnkiNotes';
 
 const SelectAllRow = styled(Box)(({ theme }) => ({
   ...getFlexRowCenterStyle({ theme, gap: 2 }),
   marginBottom: theme.spacing(2),
-}))
+}));
 
-const NotesList = styled(List)(({ theme }) => getBorderedListStyle({ theme }))
+const NotesList = styled(List)(({ theme }) => getBorderedListStyle({ theme }));
 
 type NotesChecklistModalProps = {
-  open: boolean
-  onClose: () => void
-  notesData: AnkiNotesData | null
-  isLoading: boolean
-  onDownload: (selectedNotes: AnkiNote[]) => void
+  open: boolean;
+  onClose: () => void;
+  notesData: AnkiNotesData | null;
+  isLoading: boolean;
+  onDownload: (selectedNotes: AnkiNote[]) => void;
   onAddToDeck: (
     selectedNotes: AnkiNote[],
     deckName: string
-  ) => void | Promise<void>
-  isDownloading?: boolean
-  isAdding?: boolean
-}
+  ) => void | Promise<void>;
+  isDownloading?: boolean;
+  isAdding?: boolean;
+};
 
 export const NotesChecklistModal = ({
   open,
@@ -59,10 +59,10 @@ export const NotesChecklistModal = ({
   isAdding = false,
 }: NotesChecklistModalProps) => {
   const { ankiConnectEnabled, selectedDeck, isAnkiConnectSupported } =
-    useAnkiConnectContext()
+    useAnkiConnectContext();
   const selectionKey = notesData
     ? `${notesData.deckName}-${notesData.notes.length}`
-    : 'empty'
+    : 'empty';
 
   return (
     <NotesChecklistContent
@@ -79,14 +79,14 @@ export const NotesChecklistModal = ({
       onAddToDeck={onAddToDeck}
       onClose={onClose}
     />
-  )
-}
+  );
+};
 
 type NotesChecklistContentProps = NotesChecklistModalProps & {
-  ankiConnectEnabled: boolean
-  selectedDeck: string
-  isAnkiConnectSupported: boolean
-}
+  ankiConnectEnabled: boolean;
+  selectedDeck: string;
+  isAnkiConnectSupported: boolean;
+};
 
 const NotesChecklistContent = ({
   open,
@@ -103,55 +103,55 @@ const NotesChecklistContent = ({
 }: NotesChecklistContentProps) => {
   const [selected, setSelected] = useState<Set<number>>(() =>
     notesData ? new Set(notesData.notes.map((_, index) => index)) : new Set()
-  )
+  );
 
   const selectedNotes = useMemo(
     () => notesData?.notes.filter((_, index) => selected.has(index)) ?? [],
     [notesData, selected]
-  )
+  );
 
   const allSelected = notesData
     ? selected.size === notesData.notes.length
-    : false
-  const someSelected = selected.size > 0
+    : false;
+  const someSelected = selected.size > 0;
 
   const handleToggle = useCallback((index: number) => {
     setSelected((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
 
-      if (next.has(index)) next.delete(index)
-      else next.add(index)
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
 
-      return next
-    })
-  }, [])
+      return next;
+    });
+  }, []);
 
   const handleSelectAll = useCallback(() => {
-    if (!notesData) return
+    if (!notesData) return;
     setSelected(
       allSelected
         ? new Set()
         : new Set(notesData.notes.map((_, index) => index))
-    )
-  }, [notesData, allSelected])
+    );
+  }, [notesData, allSelected]);
 
   const handleDownload = useCallback(() => {
-    onDownload(selectedNotes)
-  }, [onDownload, selectedNotes])
+    onDownload(selectedNotes);
+  }, [onDownload, selectedNotes]);
 
   const handleAddToDeck = useCallback(() => {
-    if (!selectedDeck) return
-    onAddToDeck(selectedNotes, selectedDeck)
-  }, [onAddToDeck, selectedNotes, selectedDeck])
+    if (!selectedDeck) return;
+    onAddToDeck(selectedNotes, selectedDeck);
+  }, [onAddToDeck, selectedNotes, selectedDeck]);
 
   const handleClose = useCallback(() => {
-    setSelected(new Set())
-    onClose()
-  }, [onClose])
+    setSelected(new Set());
+    onClose();
+  }, [onClose]);
 
-  const isBusy = isDownloading || isAdding
+  const isBusy = isDownloading || isAdding;
 
-  const dialogTitle = isLoading ? 'Loading cards...' : 'Choose cards to export'
+  const dialogTitle = isLoading ? 'Loading cards...' : 'Choose cards to export';
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -177,10 +177,15 @@ const NotesChecklistContent = ({
             </SelectAllRow>
             <NotesList dense>
               {notesData.notes.map((note, index) => {
-                const word = note.fields?.Word ?? ''
+                const word = note.fields?.Word ?? '';
                 const def =
-                  note.fields?.['Word Meaning'] ?? note.fields?.Definition ?? ''
-                const defPreview = getTruncatedText(getTextWithoutHtml(def), 60)
+                  note.fields?.['Word Meaning'] ??
+                  note.fields?.Definition ??
+                  '';
+                const defPreview = getTruncatedText(
+                  getTextWithoutHtml(def),
+                  60
+                );
 
                 return (
                   <ListItem key={index} disablePadding sx={{ py: 0.5 }}>
@@ -211,7 +216,7 @@ const NotesChecklistContent = ({
                       sx={{ width: '100%', m: 0 }}
                     />
                   </ListItem>
-                )
+                );
               })}
             </NotesList>
           </>
@@ -260,5 +265,5 @@ const NotesChecklistContent = ({
         )}
       </DialogActions>
     </Dialog>
-  )
-}
+  );
+};

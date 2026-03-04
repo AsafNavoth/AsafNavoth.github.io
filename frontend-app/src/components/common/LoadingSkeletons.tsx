@@ -5,22 +5,22 @@ import {
   ListItemButton,
   Skeleton,
   styled,
-} from '@mui/material'
+} from '@mui/material';
 import {
   getBorderedListStyle,
   getFlexColumnGapPlainStyle,
   scrollableListContainer,
-} from '../../utils/commonStyles'
+} from '../../utils/commonStyles';
 
-const SKELETON_CARD_COUNT = 6
+const SKELETON_CARD_COUNT = 6;
 
-const VERSE_LINE_WIDTHS = ['50%', '55%', '60%', '52%']
+const VERSE_LINE_WIDTHS = ['50%', '55%', '60%', '52%'];
 
 const NotesListSkeleton = styled(List)(({ theme }) => ({
   ...getBorderedListStyle({ theme, overflow: 'hidden', padding: 1 }),
-}))
+}));
 
-const SearchResultsListRoot = styled(List)(scrollableListContainer)
+const SearchResultsListRoot = styled(List)(scrollableListContainer);
 
 const VerseSkeleton = ({ verseIndex }: { verseIndex: number }) => (
   <>
@@ -34,7 +34,7 @@ const VerseSkeleton = ({ verseIndex }: { verseIndex: number }) => (
       />
     ))}
   </>
-)
+);
 
 export const LyricsSkeleton = () => (
   <Box sx={getFlexColumnGapPlainStyle({ gap: 1 })}>
@@ -44,7 +44,7 @@ export const LyricsSkeleton = () => (
     <Box sx={{ height: 8 }} />
     <VerseSkeleton verseIndex={2} />
   </Box>
-)
+);
 
 export const NotesChecklistSkeleton = () => (
   <>
@@ -62,9 +62,9 @@ export const NotesChecklistSkeleton = () => (
       ))}
     </NotesListSkeleton>
   </>
-)
+);
 
-const SEARCH_RESULT_SKELETON_COUNT = 5
+const SEARCH_RESULT_SKELETON_COUNT = 5;
 
 export const SearchResultsSkeleton = () => (
   <SearchResultsListRoot>
@@ -79,4 +79,4 @@ export const SearchResultsSkeleton = () => (
       </ListItem>
     ))}
   </SearchResultsListRoot>
-)
+);

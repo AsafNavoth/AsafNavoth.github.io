@@ -1,5 +1,5 @@
-import axios, { type AxiosInstance } from 'axios'
-import { apiUrl } from '../env'
+import axios, { type AxiosInstance } from 'axios';
+import { apiUrl } from '../env';
 
 const createApiClient = (): AxiosInstance =>
   axios.create({
@@ -7,8 +7,8 @@ const createApiClient = (): AxiosInstance =>
     headers: {
       'Content-Type': 'application/json',
     },
-  })
+  });
 
-const apiClient = createApiClient()
+const apiClient = createApiClient();
 
-export const useApi = () => apiClient
+export const useApi = () => apiClient;

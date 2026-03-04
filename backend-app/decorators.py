@@ -85,8 +85,8 @@ def log_call(func):
 
         try:
             result = func(*args, **kwargs)
-        except Exception as error:
-            logger.exception("%s: %s", func_name, error)
+        except Exception as e:
+            logger.exception("%s: %s", func_name, e)
             raise
 
         summary = _get_result_summary(result)
@@ -111,8 +111,8 @@ def log_route(route_func):
 
         try:
             return_value = route_func(*args, **kwargs)
-        except Exception as error:
-            logger.exception("%s: %s", route_name, error)
+        except Exception as e:
+            logger.exception("%s: %s", route_name, e)
             raise
 
         response_info = _get_response_info(return_value)

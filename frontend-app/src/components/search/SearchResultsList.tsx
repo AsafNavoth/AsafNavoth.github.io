@@ -4,19 +4,19 @@ import {
   ListItemButton,
   ListItemText,
   styled,
-} from '@mui/material'
-import type { LrclibSearchResult } from '../../types/lrclib'
+} from '@mui/material';
+import type { LrclibSearchResult } from '../../types/lrclib';
 import {
   getOnHoverStyle,
   scrollableListContainer,
-} from '../../utils/commonStyles'
+} from '../../utils/commonStyles';
 
-const SearchResultsListRoot = styled(List)(scrollableListContainer)
+const SearchResultsListRoot = styled(List)(scrollableListContainer);
 
 type SearchResultsListProps = {
-  results: LrclibSearchResult[]
-  onTrackClick: (track: LrclibSearchResult) => void
-}
+  results: LrclibSearchResult[];
+  onTrackClick: (track: LrclibSearchResult) => void;
+};
 
 export const SearchResultsList = ({
   results,
@@ -37,4 +37,4 @@ export const SearchResultsList = ({
       </ListItem>
     ))}
   </SearchResultsListRoot>
-)
+);
