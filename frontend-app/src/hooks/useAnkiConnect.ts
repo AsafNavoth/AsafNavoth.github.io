@@ -1,22 +1,28 @@
 import { useCallback, useContext, useState } from 'react';
-import axios from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from '../contexts/snackbar/snackbarContext';
 import { AnkiConnectContext } from '../contexts/ankiconnect/ankiconnectContext';
 import { getPluralSuffix } from '../utils/commonStringUtils';
 import {
   ANKI_CONNECTION_ERROR_MESSAGE,
+  EXTENSION_REQUIRED_ERROR_CODE,
+  EXTENSION_REQUIRED_ERROR_MESSAGE,
   getApiErrorMessage,
   isAnkiConnectionError,
+  isExtensionRequiredError,
   LYRICS_ANKI_MODEL_CONFIG_API_PATH,
 } from '../utils/apiUtils';
 import { useApi } from './useApi';
 import { useReactQuery } from './useReactQuery';
-import { excludedDecks } from '../env';
+import { excludedDecks, extensionOrigins } from '../env';
 import type { AnkiNote } from './useAnkiNotes';
 
 const ANKICONNECT_VERSION = 6;
-const ANKICONNECT_URL = 'http://localhost:8765';
+const EXTENSION_TIMEOUT_MS = 3000;
+const EXTENSION_MESSAGE_TYPE_REQUEST = 'UTANKI_ANKICONNECT_REQUEST';
+const EXTENSION_MESSAGE_TYPE_RESPONSE = 'UTANKI_ANKICONNECT_RESPONSE';
+const INVALID_ANKICONNECT_RESPONSE_MESSAGE = 'Invalid AnkiConnect response';
+const LOCALHOST_PREFIX_ORIGINS = ['http://localhost', 'http://127.0.0.1'];
 
 export type AnkiModelConfig = {
   modelName: string;
@@ -31,25 +37,54 @@ type AnkiConnectRequest = {
   params?: Record<string, unknown>;
 };
 
-const invokeAnkiConnect = async <T>(
-  request: AnkiConnectRequest
-): Promise<T> => {
-  const { data } = await axios.post<{ result?: T; error?: string }>(
-    ANKICONNECT_URL,
-    request,
-    { headers: { 'Content-Type': 'application/json' } }
-  );
+const isOriginAllowed = (origin: string): boolean =>
+  extensionOrigins.some((allowed) => {
+    const isExactMatch = origin === allowed;
+    const isLocalhostWithPort =
+      LOCALHOST_PREFIX_ORIGINS.includes(allowed) && origin.startsWith(allowed);
 
-  if (data.error) {
-    throw new Error(data.error);
-  }
-  const result = data.result;
+    return isExactMatch || isLocalhostWithPort;
+  });
 
-  if (result === undefined) {
-    throw new Error('Invalid AnkiConnect response');
+const invokeAnkiConnect = <T>(request: AnkiConnectRequest): Promise<T> => {
+  if (!isOriginAllowed(window.location.origin)) {
+    return Promise.reject(new Error(EXTENSION_REQUIRED_ERROR_CODE));
   }
 
-  return result;
+  return new Promise((resolve, reject) => {
+    // postMessage is a shared channel; responses aren't tied to requests. The
+    // requestId correlates each response with its request when multiple calls
+    // are in flight.
+    const requestId = crypto.randomUUID();
+    const responseHandler = (event: MessageEvent) => {
+      const { type: messageType, result, error } = event.data || {};
+
+      if (
+        messageType !== EXTENSION_MESSAGE_TYPE_RESPONSE ||
+        event.data?.id !== requestId
+      )
+        return;
+
+      clearTimeout(extensionTimeoutHandler);
+      window.removeEventListener('message', responseHandler);
+
+      if (error) reject(new Error(error));
+      else if (result === undefined)
+        reject(new Error(INVALID_ANKICONNECT_RESPONSE_MESSAGE));
+      else resolve(result);
+    };
+
+    window.addEventListener('message', responseHandler);
+    window.postMessage(
+      { type: EXTENSION_MESSAGE_TYPE_REQUEST, id: requestId, payload: request },
+      '*'
+    );
+
+    const extensionTimeoutHandler = setTimeout(() => {
+      window.removeEventListener('message', responseHandler);
+      reject(new Error(EXTENSION_REQUIRED_ERROR_CODE));
+    }, EXTENSION_TIMEOUT_MS);
+  });
 };
 
 const getFieldsForNoteFromConfig = (
@@ -205,14 +240,18 @@ export const useAnkiConnect = () => {
           error,
           'Failed to add cards to Anki'
         );
+        const isExtensionRequired = isExtensionRequiredError(error);
         const isConnectionError = isAnkiConnectionError(error);
-        const displayMessage = isConnectionError
-          ? ANKI_CONNECTION_ERROR_MESSAGE
-          : message;
+        const displayMessage = isExtensionRequired
+          ? EXTENSION_REQUIRED_ERROR_MESSAGE
+          : isConnectionError
+            ? ANKI_CONNECTION_ERROR_MESSAGE
+            : message;
         setError(displayMessage);
         enqueueErrorSnackbar(displayMessage);
 
-        if (isConnectionError) ankiContext?.onConnectionError();
+        if (isExtensionRequired || isConnectionError)
+          ankiContext?.onConnectionError();
         throw error;
       } finally {
         setIsAdding(false);

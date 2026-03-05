@@ -1,3 +1,9 @@
+const parseCommaSeparatedList = (value: string): string[] =>
+  value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 export const apiUrl = import.meta.env.VITE_API_URL;
 
 export const maxLyricsChars = parseInt(
@@ -5,7 +11,10 @@ export const maxLyricsChars = parseInt(
   10
 );
 
-export const excludedDecks: string[] =
-  import.meta.env.VITE_ANKI_EXCLUDED_DECKS.split(',')
-    .map((deckName) => deckName.trim())
-    .filter(Boolean);
+export const excludedDecks: string[] = parseCommaSeparatedList(
+  import.meta.env.VITE_ANKI_EXCLUDED_DECKS
+);
+
+export const extensionOrigins: string[] = parseCommaSeparatedList(
+  import.meta.env.VITE_ANKICONNECT_EXTENSION_ORIGINS
+);

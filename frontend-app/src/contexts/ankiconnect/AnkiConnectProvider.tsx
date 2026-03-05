@@ -4,7 +4,9 @@ import { useThemeMode } from '../theme/themeContext';
 import { getErrorMessage } from '../../utils/commonStringUtils';
 import {
   ANKI_CONNECTION_ERROR_MESSAGE,
+  EXTENSION_REQUIRED_ERROR_MESSAGE,
   isAnkiConnectionError,
+  isExtensionRequiredError,
 } from '../../utils/apiUtils';
 import { useAnkiConnect } from '../../hooks/useAnkiConnect';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
@@ -59,13 +61,16 @@ export const AnkiConnectProvider = ({ children }: AnkiConnectProviderProps) => {
     (error: unknown) => {
       const msg = getErrorMessage(error, 'Failed to fetch decks');
       const isConnectionError = isAnkiConnectionError(error);
-      const displayMsg = isConnectionError
-        ? ANKI_CONNECTION_ERROR_MESSAGE
-        : msg;
+      const isExtensionRequired = isExtensionRequiredError(error);
+      const displayMsg = isExtensionRequired
+        ? EXTENSION_REQUIRED_ERROR_MESSAGE
+        : isConnectionError
+          ? ANKI_CONNECTION_ERROR_MESSAGE
+          : msg;
       setDecksError(displayMsg);
       enqueueErrorSnackbar(displayMsg);
 
-      if (isConnectionError) setAnkiConnectEnabled(false);
+      if (isConnectionError || isExtensionRequired) setAnkiConnectEnabled(false);
     },
     [enqueueErrorSnackbar, setAnkiConnectEnabled]
   );

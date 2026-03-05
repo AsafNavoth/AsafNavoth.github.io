@@ -6,6 +6,9 @@ const ANKI_CONNECTION_ERROR_CODE = 'ANKI_CONNECTION';
 export const ANKI_CONNECTION_ERROR_MESSAGE =
   'Cannot connect to Anki. Make sure Anki is running and AnkiConnect add-on is installed.';
 
+export const EXTENSION_REQUIRED_ERROR_MESSAGE =
+  'Install the Utanki Chrome extension to use AnkiConnect from the web app.';
+
 // Anki model field names - must match backend FIELD_* constants
 export const ANKI_FIELD_WORD = 'Word';
 export const ANKI_FIELD_SENTENCE = 'Sentence';
@@ -27,8 +30,16 @@ const getErrorCode = (responseData: object): string | undefined => {
   return typeof errorCodeValue === 'string' ? errorCodeValue : undefined;
 };
 
-// Detect Anki connection errors via structured backend response or network failure.
+export const EXTENSION_REQUIRED_ERROR_CODE = 'EXTENSION_REQUIRED';
+
+export const isExtensionRequiredError = (error: unknown): boolean =>
+  error instanceof Error && error.message === EXTENSION_REQUIRED_ERROR_CODE;
+
 export const isAnkiConnectionError = (error: unknown): boolean => {
+  if (error instanceof Error && error.message === ANKI_CONNECTION_ERROR_CODE) {
+    return true;
+  }
+
   if (!axios.isAxiosError(error)) return false;
   const data = error.response?.data;
 
