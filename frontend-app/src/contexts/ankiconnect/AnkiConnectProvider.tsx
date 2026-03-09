@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSnackbar } from '../snackbar/snackbarContext';
-import { useThemeMode } from '../theme/themeContext';
 import { getErrorMessage } from '../../utils/commonStringUtils';
 import {
   ANKI_CONNECTION_ERROR_MESSAGE,
@@ -17,12 +16,18 @@ const ANKICONNECT_ENABLED_KEY = 'utanki-ankiconnect-enabled';
 const SELECTED_DECK_KEY = 'utanki-selected-deck';
 const DECK_REFRESH_INTERVAL_MS = 30_000;
 
+const MOBILE_UA_REGEX =
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+
+const getIsMobileFromUserAgent = (): boolean =>
+  typeof navigator !== 'undefined' && MOBILE_UA_REGEX.test(navigator.userAgent);
+
 type AnkiConnectProviderProps = {
   children: React.ReactNode;
 };
 
 export const AnkiConnectProvider = ({ children }: AnkiConnectProviderProps) => {
-  const { isAnkiConnectSupported } = useThemeMode();
+  const isAnkiConnectSupported = !getIsMobileFromUserAgent();
   const { getDeckNames } = useAnkiConnect();
   const { enqueueErrorSnackbar } = useSnackbar();
   const [ankiConnectEnabled, setAnkiConnectEnabled] = useLocalStorageState({

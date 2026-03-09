@@ -44,14 +44,14 @@ const ContentBox = styled(Box)(({ theme }) => ({
 }));
 
 export const App = () => {
-  const { isMobile } = useThemeMode();
+  const { isNarrowViewport } = useThemeMode();
 
   return (
     <AppLayout>
       <AppBar />
-      <MainContainer maxWidth={false} sx={isMobile ? { paddingTop: 0 } : {}}>
+      <MainContainer maxWidth={false} sx={isNarrowViewport ? { paddingTop: 0 } : {}}>
         <MainPaper>
-          {isMobile ? (
+          {isNarrowViewport ? (
             <MobileMainView />
           ) : (
             <ContentBox>

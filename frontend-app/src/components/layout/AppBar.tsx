@@ -13,6 +13,7 @@ import {
   LIGHT_THEME_STRING,
   DARK_THEME_STRING,
 } from '../../contexts/theme/themeContext';
+import { useAnkiConnectContext } from '../../contexts/ankiconnect/ankiconnectContext';
 import { AnkiConnectBar } from '../anki/AnkiConnectBar';
 
 const StyledAppBar = styled(MuiAppBar)(({ theme }) => ({
@@ -56,12 +57,12 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
 }));
 
 export const AppBar = () => {
-  const { mode, toggleColorMode, isAnkiConnectSupported, isMobile } =
-    useThemeMode();
+  const { mode, toggleColorMode, isNarrowViewport } = useThemeMode();
+  const { isAnkiConnectSupported } = useAnkiConnectContext();
 
   return (
     <StyledAppBar
-      position={isMobile ? 'static' : 'fixed'}
+      position={isNarrowViewport ? 'static' : 'fixed'}
       color="default"
       elevation={0}
     >

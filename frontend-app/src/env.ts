@@ -18,3 +18,6 @@ export const excludedDecks: string[] = parseCommaSeparatedList(
 export const extensionOrigins: string[] = parseCommaSeparatedList(
   import.meta.env.VITE_ANKICONNECT_EXTENSION_ORIGINS
 );
+
+export const ankiconnectExtensionUrl =
+  import.meta.env.VITE_ANKICONNECT_EXTENSION_URL;

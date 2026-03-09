@@ -11,14 +11,9 @@ import {
   ThemeContext,
   LIGHT_THEME_STRING,
   DARK_THEME_STRING,
+  DARK_THEME_PAPER,
 } from './themeContext';
 import type { ThemeMode } from './themeContext';
-
-const MOBILE_UA_REGEX =
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-
-const getIsMobileFromUserAgent = (): boolean =>
-  typeof navigator !== 'undefined' && MOBILE_UA_REGEX.test(navigator.userAgent);
 
 const THEME_MODE_STORAGE_KEY = 'utanki-theme-mode';
 
@@ -81,20 +76,17 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
           background:
             mode === LIGHT_THEME_STRING
               ? { default: '#eef2f6', paper: '#e2e8f0' }
-              : { default: '#131A20', paper: '#2F3B46' },
+              : { default: '#131A20', paper: DARK_THEME_PAPER },
         },
       }),
     [mode]
   );
 
   const isNarrowViewport = useMediaQuery(theme.breakpoints.down('sm'));
-  const isMobileUA = getIsMobileFromUserAgent();
-  const isMobile = isNarrowViewport;
-  const isAnkiConnectSupported = !isMobileUA;
 
   const contextValue = useMemo(
-    () => ({ mode, toggleColorMode, isMobile, isAnkiConnectSupported }),
-    [mode, toggleColorMode, isMobile, isAnkiConnectSupported]
+    () => ({ mode, toggleColorMode, isNarrowViewport }),
+    [mode, toggleColorMode, isNarrowViewport]
   );
 
   return (

@@ -3,13 +3,14 @@ import { createContext, useContext } from 'react';
 export const LIGHT_THEME_STRING = 'light';
 export const DARK_THEME_STRING = 'dark';
 
+export const DARK_THEME_PAPER = '#2F3B46';
+
 export type ThemeMode = typeof LIGHT_THEME_STRING | typeof DARK_THEME_STRING;
 
 export type ThemeContextValue = {
   mode: ThemeMode;
   toggleColorMode: () => void;
-  isMobile: boolean;
-  isAnkiConnectSupported: boolean;
+  isNarrowViewport: boolean;
 };
 
 export const ThemeContext = createContext<ThemeContextValue | null>(null);
