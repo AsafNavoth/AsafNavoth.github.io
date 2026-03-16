@@ -15,6 +15,7 @@ import {
 } from '../../contexts/theme/themeContext';
 import { useAnkiConnectContext } from '../../contexts/ankiconnect/ankiconnectContext';
 import { AnkiConnectBar } from '../anki/AnkiConnectBar';
+import { GitHubIconLink } from '../common/GitHubIconLink';
 
 const StyledAppBar = styled(MuiAppBar)(({ theme }) => ({
   borderBottom: `1px solid ${theme.palette.divider}`,
@@ -69,6 +70,7 @@ export const AppBar = () => {
       <StyledToolbar>
         <AppTitle variant="h6">Utanki</AppTitle>
         <ControlsBox>
+          <GitHubIconLink />
           {isAnkiConnectSupported && <AnkiConnectBar />}
           <StyledIconButton
             onClick={toggleColorMode}

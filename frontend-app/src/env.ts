@@ -19,5 +19,7 @@ export const extensionOrigins: string[] = parseCommaSeparatedList(
   import.meta.env.VITE_ANKICONNECT_EXTENSION_ORIGINS
 );
 
-export const ankiconnectExtensionUrl =
-  import.meta.env.VITE_ANKICONNECT_EXTENSION_URL;
+export const ankiconnectExtensionUrl = import.meta.env
+  .VITE_ANKICONNECT_EXTENSION_URL;
+
+export const githubRepoUrl = import.meta.env.VITE_GITHUB_REPO_URL;

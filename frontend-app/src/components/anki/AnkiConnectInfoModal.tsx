@@ -13,11 +13,10 @@ import {
 import { useState } from 'react';
 import { ankiconnectExtensionUrl } from '../../env';
 import { DARK_THEME_PAPER } from '../../contexts/theme/themeContext';
+import chromeWebStoreIcon from '../../assets/chrome-web-store.svg';
 
 const ANKICONNECT_ADDON_NUMBER = '2055492159';
 const COPY_RESET_MS = 2000;
-const CHROME_WEB_STORE_ICON_URL =
-  'https://upload.wikimedia.org/wikipedia/commons/0/0c/Google_Chrome_Web_Store_icon_2022.svg';
 
 type AnkiConnectInfoModalProps = {
   open: boolean;
@@ -45,7 +44,7 @@ const ChromeWebStoreLink = () => (
     rel="noopener noreferrer"
   >
     <img
-      src={CHROME_WEB_STORE_ICON_URL}
+      src={chromeWebStoreIcon}
       alt="Chrome Web Store"
       width={24}
       height={24}
